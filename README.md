@@ -20,7 +20,7 @@
 * **Боевой сервер:** UDP/TCP синхронизация матчей, стрельба, разрушение стен/баррикад, использование гаджетов, обезвреживание заряда.
 * **Веб-панель администратора (HTTP 8080):** Управление аккаунтами в реальном времени, изменение уровня, ранга, валюты (золото/алмазы) и выдача предметов.
 * **База данных:** SQLite база данных для надежного хранения профилей и игрового состояния.
-* **Клиент в комплекте:** В репозиторий включен готовый рабочий APK для Android.
+* **Клиент в комплекте:** Пропатченный APK для Android, готовый к работе без настройки сертификатов и перенаправления трафика.
 
 ---
 
@@ -32,7 +32,7 @@
 
 ---
 
-## 🚀 Пошаговое руководство по установке
+## 🚀 Пошаговое руководство по установке сервера
 
 ### 1. Клонирование репозитория
 ```bash
@@ -73,29 +73,26 @@ sudo python3 run_https_443.py
 
 ---
 
-## 📱 Установка и запуск клиента игры (APK)
+## 📱 Установка и запуск клиента на устройстве (APK и кэш OBB)
 
-Файл игрового клиента находится в папке `client/apk/`:
+Клиентский APK пропатчен — установка дополнительных сертификатов и настройка перенаправления трафика **не требуются**.
 
 1. **Установка APK:**
-   Установите файл `client/apk/com.qookka.areaf2.apk` на Android-устройство или эмулятор (например, LDPlayer 9 / BlueStacks):
-   ```bash
-   adb install client/apk/com.qookka.areaf2.apk
-   ```
+   * Установите файл `client/apk/com.qookka.areaf2.apk` на ваш телефон или эмулятор Android (например, LDPlayer, BlueStacks или физическое устройство).
 
-2. **Перенаправление трафика на сервер:**
-   Перенаправьте игровые домены на IP-адрес вашего сервера (через `/system/etc/hosts` на устройстве, DNS или роутер):
-   ```text
-   <IP_СЕРВЕРА> p10470-ustest-chat-tcpclient.ejoy.com
-   <IP_СЕРВЕРА> ga.ejoy.com
-   <IP_СЕРВЕРА> game.ejoy.com
-   ```
+2. **Установка кэша OBB:**
+   * Скопируйте файл кэша `main.60.com.qookka.areaf2.obb` во внутреннюю память телефона в папку:
+     `Внутренняя память/Android/obb/com.qookka.areaf2/`
+   *(Если папки `com.qookka.areaf2` не существует, создайте ее вручную через проводник).*
+
+3. **Запуск:**
+   * Запустите игру. Клиент автоматически подключится к серверу.
 
 ---
 
 ## 🌐 Веб-панель управления (Admin Panel)
 
-После старта сервера откройте:
+После старта сервера откройте браузер:
 👉 **[http://localhost:8080](http://localhost:8080)** *(или `http://<IP_СЕРВЕРА>:8080`)*
 
 * Просмотр списка зарегистрированных игроков и их онлайн-статуса.
@@ -144,7 +141,7 @@ A standalone server suite for the tactical mobile shooter **Area F2**. Emulates 
 * **Battle Server:** UDP/TCP match synchronization, shooting, wall/barricade destruction, operator gadgets, and defuser plant/defuse logic.
 * **Web Admin Panel (HTTP 8080):** Real-time player management, modify player level, rank score, gold/diamonds, and grant inventory items.
 * **Database:** Lightweight SQLite database for profile persistence.
-* **Client Included:** Ready-to-use Android APK included in the repository.
+* **Patched Client Included:** Patched Android APK included — works directly without certificate installation or traffic redirection.
 
 ---
 
@@ -156,7 +153,7 @@ A standalone server suite for the tactical mobile shooter **Area F2**. Emulates 
 
 ---
 
-## 🚀 Step-by-Step Installation Guide
+## 🚀 Step-by-Step Server Installation Guide
 
 ### 1. Clone the Repository
 ```bash
@@ -197,23 +194,20 @@ sudo python3 run_https_443.py
 
 ---
 
-## 📱 Game Client Setup (APK)
+## 📱 Mobile Device Client Setup (APK & OBB Cache)
 
-The client APK file is located in `client/apk/`:
+The client APK is pre-patched: installing custom SSL certificates or setting up traffic redirection **is NOT required**.
 
-1. **Install APK:**
-   Install `client/apk/com.qookka.areaf2.apk` on your Android device or emulator (e.g., LDPlayer 9 / BlueStacks):
-   ```bash
-   adb install client/apk/com.qookka.areaf2.apk
-   ```
+1. **APK Installation:**
+   * Install `client/apk/com.qookka.areaf2.apk` on your Android phone or emulator (e.g., LDPlayer 9, BlueStacks).
 
-2. **Route Game Domains to Server IP:**
-   Add to `/system/etc/hosts` on your device or router DNS:
-   ```text
-   <SERVER_IP> p10470-ustest-chat-tcpclient.ejoy.com
-   <SERVER_IP> ga.ejoy.com
-   <SERVER_IP> game.ejoy.com
-   ```
+2. **OBB Cache Setup:**
+   * Copy the OBB cache file `main.60.com.qookka.areaf2.obb` into internal storage at:
+     `Internal Storage/Android/obb/com.qookka.areaf2/`
+   *(If the `com.qookka.areaf2` folder does not exist, create it manually).*
+
+3. **Launch:**
+   * Open the game. The client will automatically connect to the server.
 
 ---
 
