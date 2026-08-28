@@ -20,7 +20,7 @@
 * **Боевой сервер:** UDP/TCP синхронизация матчей, стрельба, разрушение стен/баррикад, использование гаджетов, обезвреживание заряда.
 * **Веб-панель администратора (HTTP 8080):** Управление аккаунтами в реальном времени, изменение уровня, ранга, валюты (золото/алмазы) и выдача предметов.
 * **База данных:** SQLite база данных для надежного хранения профилей и игрового состояния.
-* **Клиент в комплекте:** В репозиторий включены рабочий APK и OBB-кэш для Android.
+* **Клиент в комплекте:** В репозиторий включен готовый рабочий APK для Android.
 
 ---
 
@@ -28,7 +28,6 @@
 
 * **ОС:** Windows 10/11, Linux (Ubuntu 20.04+) или macOS.
 * **Python:** Версия **3.10** или выше (рекомендуется **Python 3.11**).
-* **Git LFS:** Для загрузки OBB-кэша (`git lfs`).
 * **Права суперпользователя:** Запуск от имени **Администратора (Windows)** или через **`sudo` (Linux)** обязателен (для привязки к HTTPS-порту **443**).
 
 ---
@@ -41,11 +40,6 @@ git clone git@github.com:1nsirius/area-b2.git
 cd area-b2
 ```
 *(Или через HTTPS: `git clone https://github.com/1nsirius/area-b2.git`)*
-
-Если вы используете Git LFS, загрузите бинарные файлы клиента:
-```bash
-git lfs pull
-```
 
 ### 2. Установка зависимостей Python
 ```bash
@@ -79,27 +73,18 @@ sudo python3 run_https_443.py
 
 ---
 
-## 📱 Установка и запуск клиента игры (APK и OBB)
+## 📱 Установка и запуск клиента игры (APK)
 
-Файлы игрового клиента находятся в папке `client/`:
+Файл игрового клиента находится в папке `client/apk/`:
 
 1. **Установка APK:**
-   Установите файл `client/apk/com.qookka.areaf2.apk` на Android-устройство или эмулятор (например, LDPlayer 9 / BlueStacks).
+   Установите файл `client/apk/com.qookka.areaf2.apk` на Android-устройство или эмулятор (например, LDPlayer 9 / BlueStacks):
    ```bash
    adb install client/apk/com.qookka.areaf2.apk
    ```
 
-2. **Копирование OBB-кэша:**
-   Скопируйте папку с кэшем на устройство по пути `/sdcard/Android/obb/`:
-   ```bash
-   adb push client/obb/com.qookka.areaf2 /sdcard/Android/obb/
-   ```
-
-3. **Установка SSL-сертификата:**
-   Установите системный сертификат `certs/910e88fa.0` в хранилище `/system/etc/security/cacerts/` (требуются root-права) либо используйте пропатченный APK с отключенной проверкой SSL.
-
-4. **Перенаправление игровых доменов на IP сервера:**
-   Добавьте в `/system/etc/hosts` на устройстве или в настройках DNS:
+2. **Перенаправление трафика на сервер:**
+   Перенаправьте игровые домены на IP-адрес вашего сервера (через `/system/etc/hosts` на устройстве, DNS или роутер):
    ```text
    <IP_СЕРВЕРА> p10470-ustest-chat-tcpclient.ejoy.com
    <IP_СЕРВЕРА> ga.ejoy.com
@@ -159,7 +144,7 @@ A standalone server suite for the tactical mobile shooter **Area F2**. Emulates 
 * **Battle Server:** UDP/TCP match synchronization, shooting, wall/barricade destruction, operator gadgets, and defuser plant/defuse logic.
 * **Web Admin Panel (HTTP 8080):** Real-time player management, modify player level, rank score, gold/diamonds, and grant inventory items.
 * **Database:** Lightweight SQLite database for profile persistence.
-* **Client Included:** Android APK and OBB game cache bundled inside the repository via Git LFS.
+* **Client Included:** Ready-to-use Android APK included in the repository.
 
 ---
 
@@ -167,7 +152,6 @@ A standalone server suite for the tactical mobile shooter **Area F2**. Emulates 
 
 * **OS:** Windows 10/11, Linux (Ubuntu 20.04+), or macOS.
 * **Python:** Version **3.10** or higher (**Python 3.11** recommended).
-* **Git LFS:** Required for downloading the OBB cache (`git lfs`).
 * **Root / Administrator privileges:** Running as **Administrator (Windows)** or via **`sudo` (Linux)** is required to bind standard HTTPS port **443**.
 
 ---
@@ -180,11 +164,6 @@ git clone git@github.com:1nsirius/area-b2.git
 cd area-b2
 ```
 *(Or via HTTPS: `git clone https://github.com/1nsirius/area-b2.git`)*
-
-Fetch large client binary files via Git LFS:
-```bash
-git lfs pull
-```
 
 ### 2. Install Python Dependencies
 ```bash
@@ -218,27 +197,18 @@ sudo python3 run_https_443.py
 
 ---
 
-## 📱 Game Client Setup (APK & OBB)
+## 📱 Game Client Setup (APK)
 
-Client files are located in the `client/` folder:
+The client APK file is located in `client/apk/`:
 
 1. **Install APK:**
-   Install `client/apk/com.qookka.areaf2.apk` on your Android device or emulator (e.g. LDPlayer 9 / BlueStacks):
+   Install `client/apk/com.qookka.areaf2.apk` on your Android device or emulator (e.g., LDPlayer 9 / BlueStacks):
    ```bash
    adb install client/apk/com.qookka.areaf2.apk
    ```
 
-2. **Copy OBB Cache:**
-   Push the OBB folder to `/sdcard/Android/obb/`:
-   ```bash
-   adb push client/obb/com.qookka.areaf2 /sdcard/Android/obb/
-   ```
-
-3. **Install SSL Certificate:**
-   Install `certs/910e88fa.0` into the system certificate store `/system/etc/security/cacerts/` (requires root access), or use an APK with disabled SSL verification.
-
-4. **Route Game Domains to Server IP:**
-   Add to `/system/etc/hosts` or your router DNS:
+2. **Route Game Domains to Server IP:**
+   Add to `/system/etc/hosts` on your device or router DNS:
    ```text
    <SERVER_IP> p10470-ustest-chat-tcpclient.ejoy.com
    <SERVER_IP> ga.ejoy.com
