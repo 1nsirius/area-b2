@@ -23,3 +23,6 @@ venv/
 .idea/
 .vscode/
 .vs/
+
+# Client large OBB
+client/obb/
