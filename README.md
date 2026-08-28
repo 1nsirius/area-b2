@@ -73,20 +73,29 @@ sudo python3 run_https_443.py
 
 ---
 
-## 📱 Установка и запуск клиента на устройстве (APK и кэш OBB)
+## 📱 Установка и порядок запуска клиента на устройстве (APK и кэш OBB)
 
-Клиентский APK пропатчен — установка дополнительных сертификатов и настройка перенаправления трафика **не требуются**.
+Файлы игрового клиента находятся в папке `client/`:
 
-1. **Установка APK:**
-   * Установите файл `client/apk/com.qookka.areaf2.apk` на ваш телефон или эмулятор Android (например, LDPlayer, BlueStacks или физическое устройство).
+### 1. Установка приложения и кэша:
+* **Установка APK:** Установите `client/apk/com.qookka.areaf2.apk` на Android-устройство или эмулятор (LDPlayer, BlueStacks).
+* **Установка кэша OBB:** Скопируйте файл кэша `main.60.com.qookka.areaf2.obb` во внутреннюю память телефона по пути:
+  `Внутренняя память/Android/obb/com.qookka.areaf2/`
+  *(Если папки `com.qookka.areaf2` нет, создайте ее вручную).*
 
-2. **Установка кэша OBB:**
-   * Скопируйте файл кэша `main.60.com.qookka.areaf2.obb` во внутреннюю память телефона в папку:
-     `Внутренняя память/Android/obb/com.qookka.areaf2/`
-   *(Если папки `com.qookka.areaf2` не существует, создайте ее вручную через проводник).*
+### 2. Последовательность действий при запуске игры:
 
-3. **Запуск:**
-   * Запустите игру. Клиент автоматически подключится к серверу.
+1. **Ввод IP-адреса сервера:**
+   * При первом запуске игры на экране появится всплывающее диалоговое окно для ввода IP-адреса сервера.
+   * Введите IP-адрес машины, на которой запущен сервер (например, `127.0.0.1` для эмулятора на том же ПК или локальный IP-адрес вашего сервера в сети) и подтвердите ввод. Весь сетевой трафик игры будет автоматически направляться на этот адрес.
+
+2. **Выбор способа авторизации (Facebook):**
+   * На стартовом экране входа среди предложенных вариантов выберите вход через **Facebook**.
+
+3. **Ввод логина аккаунта:**
+   * В появившемся диалоговом окне найдите текстовое поле с плейсхолдером `<EMPTY>` (или пустое поле ввода).
+   * Введите ваше желаемое имя пользователя/логин (например `player1` или `1nsirius`) и нажмите кнопку подтверждения.
+   * Сервер автоматически создаст новый профиль (или загрузит существующий), и вы попадете в главное лобби игры.
 
 ---
 
@@ -194,20 +203,29 @@ sudo python3 run_https_443.py
 
 ---
 
-## 📱 Mobile Device Client Setup (APK & OBB Cache)
+## 📱 Game Client Installation & Launch Sequence (APK & OBB Cache)
 
-The client APK is pre-patched: installing custom SSL certificates or setting up traffic redirection **is NOT required**.
+The client APK is pre-patched — installing custom SSL certificates or setting up traffic redirection **is NOT required**.
 
-1. **APK Installation:**
-   * Install `client/apk/com.qookka.areaf2.apk` on your Android phone or emulator (e.g., LDPlayer 9, BlueStacks).
+### 1. Installation:
+* **APK Installation:** Install `client/apk/com.qookka.areaf2.apk` on your Android phone or emulator (e.g. LDPlayer 9, BlueStacks).
+* **OBB Cache Setup:** Copy the cache file `main.60.com.qookka.areaf2.obb` into internal storage at:
+  `Internal Storage/Android/obb/com.qookka.areaf2/`
+  *(Create the `com.qookka.areaf2` directory manually if it does not exist).*
 
-2. **OBB Cache Setup:**
-   * Copy the OBB cache file `main.60.com.qookka.areaf2.obb` into internal storage at:
-     `Internal Storage/Android/obb/com.qookka.areaf2/`
-   *(If the `com.qookka.areaf2` folder does not exist, create it manually).*
+### 2. Launch Sequence:
 
-3. **Launch:**
-   * Open the game. The client will automatically connect to the server.
+1. **Server IP Prompt:**
+   * Upon launching the game for the first time, a popup dialog will request the Server IP Address.
+   * Enter your server IP address (e.g., `127.0.0.1` for local emulator or your server's LAN/Public IP) and confirm. All game traffic will automatically route to this address.
+
+2. **Login Method Selection (Facebook):**
+   * On the main login screen, select **Facebook** as your login provider.
+
+3. **Account Username Entry:**
+   * In the popup input dialog, locate the text input field labeled with placeholder `<EMPTY>` (or empty input box).
+   * Type your desired account username/login (e.g. `player1` or `1nsirius`) and press confirm.
+   * The server will automatically initialize or load your player profile and log you into the game lobby.
 
 ---
 
