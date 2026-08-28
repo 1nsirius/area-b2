@@ -25,4 +25,3 @@ venv/
 .vs/
 
 # Client large OBB
-client/obb/
