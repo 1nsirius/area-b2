@@ -1,0 +1,2 @@
+# Area F2 Server Dependencies
+cryptography>=41.0.0

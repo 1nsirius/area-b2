@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Area F2 Server — Панель Управления и Мониторинга</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Auth Modal (Overlay when not logged in) -->
+  <div id="login-modal" class="modal-overlay active">
+    <div class="modal-card login-card">
+      <div class="brand-logo">
+        <span class="logo-badge">AF2</span>
+        <h2>Area F2 Reborn</h2>
+        <p class="subtitle">Панель управления и мониторинга сервера</p>
+      </div>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="admin-password">Пароль администратора</label>
+          <input type="password" id="admin-password" placeholder="Введите пароль..." required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">
+          <span>Войти в систему</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+        <p id="login-error" class="form-error"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main App Layout -->
+  <div id="app-layout" class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-badge">AF2</span>
+          <div class="logo-text">
+            <h1>Area F2</h1>
+            <span class="version-tag">Reborn v3.0</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <a href="#dashboard" class="nav-item active" data-tab="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          <span>Мониторинг</span>
+        </a>
+        <a href="#players" class="nav-item" data-tab="players">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Аккаунты</span>
+          <span id="badge-online-count" class="badge">0</span>
+        </a>
+        <a href="#matches" class="nav-item" data-tab="matches">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 2 18 2 18 6 6 6 6 2"/><rect x="3" y="6" width="18" height="16" rx="2"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+          <span>Комнаты и матчи</span>
+        </a>
+        <a href="#mail" class="nav-item" data-tab="mail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <span>Почта и подарки</span>
+        </a>
+        <a href="#chat" class="nav-item" data-tab="chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>Чат и анонсы</span>
+        </a>
+        <a href="#logs" class="nav-item" data-tab="logs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          <span>Живая консоль</span>
+        </a>
+        <a href="#settings" class="nav-item" data-tab="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Настройки</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="server-indicator">
+          <span class="status-dot online"></span>
+          <span class="status-label">Сервер Активен</span>
+        </div>
+        <button id="btn-logout" class="btn btn-ghost btn-sm" title="Выйти">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Header Bar -->
+      <header class="top-header">
+        <div class="header-left">
+          <h2 id="page-title">Панель Мониторинга</h2>
+        </div>
+        <div class="header-right">
+          <div class="quick-stats">
+            <div class="stat-pill"><span class="label">Аптайм:</span> <span id="stat-uptime" class="val">0ч 0м</span></div>
+            <div class="stat-pill"><span class="label">Память:</span> <span id="stat-ram" class="val">0 MB</span></div>
+          </div>
+          <button id="btn-refresh" class="btn btn-secondary btn-sm" title="Обновить">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- TAB 1: DASHBOARD -->
+      <section id="tab-dashboard" class="tab-pane active">
+        <div class="grid grid-4 mb-4">
+          <div class="stat-card">
+            <div class="stat-icon bg-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <div class="stat-data">
+              <span class="stat-title">Всего аккаунтов</span>
+              <h3 id="card-total-accounts">0</h3>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon bg-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg></div>
+            <div class="stat-data">
+              <span class="stat-title">Игроков онлайн</span>
+              <h3 id="card-online-players">0</h3>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon bg-purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 2 18 2 18 6 6 6 6 2"/><rect x="3" y="6" width="18" height="16" rx="2"/></svg></div>
+            <div class="stat-data">
+              <span class="stat-title">Активных матчей</span>
+              <h3 id="card-active-matches">0</h3>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon bg-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg></div>
+            <div class="stat-data">
+              <span class="stat-title">Сетевые сокеты</span>
+              <h3 id="card-sockets-status">5 / 5 OK</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-2 mb-4">
+          <!-- Port Status Card -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Сетевые порты и шлюзы</h3>
+            </div>
+            <div class="card-body">
+              <div class="ports-list">
+                <div class="port-row"><span class="port-num">443</span> <span class="port-desc">HTTPS Gate / Авторизация / Манифесты</span> <span class="badge badge-success">Слушает</span></div>
+                <div class="port-row"><span class="port-num">12000</span> <span class="port-desc">Lobby Sproto TCP / Комнаты / Инвентарь</span> <span class="badge badge-success">Слушает</span></div>
+                <div class="port-row"><span class="port-num">12001</span> <span class="port-desc">Battle Engine TCP/UDP / 3D-Матчи</span> <span class="badge badge-success">Слушает</span></div>
+                <div class="port-row"><span class="port-num">12345</span> <span class="port-desc">EjoySDK Chat / Друзья / Группы</span> <span class="badge badge-success">Слушает</span></div>
+                <div class="port-row"><span class="port-num">8080</span> <span class="port-desc">Web Admin Panel HTTP</span> <span class="badge badge-success">Слушает</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions Card -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Быстрые действия</h3>
+            </div>
+            <div class="card-body quick-actions-grid">
+              <button class="btn btn-primary" onclick="openNewPlayerModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Создать аккаунт</span>
+              </button>
+              <button class="btn btn-secondary" onclick="openGlobalMailModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <span>Разослать награду всем</span>
+              </button>
+              <button class="btn btn-secondary" onclick="openBroadcastChatModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span>Сообщение в чат</span>
+              </button>
+              <button class="btn btn-secondary" onclick="exportBackupData()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Бэкап базы JSON</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: PLAYERS (ACCOUNTS) -->
+      <section id="tab-players" class="tab-pane">
+        <div class="card">
+          <div class="card-header flex-between">
+            <div class="table-filters">
+              <input type="text" id="player-search-input" placeholder="Поиск по UID или никнейму..." class="input-search">
+              <select id="player-status-filter" class="input-select">
+                <option value="all">Все статусы</option>
+                <option value="online">Только Онлайн</option>
+                <option value="in_match">В матче</option>
+                <option value="banned">Заблокированные</option>
+              </select>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openNewPlayerModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Новый игрок</span>
+            </button>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="data-table" id="players-table">
+                <thead>
+                  <tr>
+                    <th>UID</th>
+                    <th>Никнейм</th>
+                    <th>Уровень</th>
+                    <th>Золото</th>
+                    <th>Алмазы</th>
+                    <th>Ранг (MMR)</th>
+                    <th>Статус</th>
+                    <th>Действия</th>
+                  </tr>
+                </thead>
+                <tbody id="players-table-body">
+                  <tr><td colspan="8" class="text-center py-4">Загрузка списка игроков...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: MATCHES & ROOMS -->
+      <section id="tab-matches" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <h3>Активные комнаты и 3D-Матчи</h3>
+          </div>
+          <div class="card-body">
+            <div id="rooms-container" class="rooms-grid">
+              <p class="empty-state">Нет активных матчей в данный момент.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: MAIL & REWARDS -->
+      <section id="tab-mail" class="tab-pane">
+        <div class="grid grid-2">
+          <!-- Compose Mail -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Отправка письма с наградами</h3>
+            </div>
+            <div class="card-body">
+              <form id="mail-compose-form">
+                <div class="form-group">
+                  <label for="mail-target-uid">Получатель (UID игрока или 'all')</label>
+                  <input type="text" id="mail-target-uid" placeholder="all для рассылки всем или UID (например 1000001)" value="all" required>
+                </div>
+                <div class="form-group">
+                  <label for="mail-title">Заголовок письма</label>
+                  <input type="text" id="mail-title" placeholder="Подарок от Администрации" required>
+                </div>
+                <div class="form-group">
+                  <label for="mail-sender">Имя отправителя</label>
+                  <input type="text" id="mail-sender" placeholder="Система" value="Система" required>
+                </div>
+                <div class="form-group">
+                  <label for="mail-content">Текст письма</label>
+                  <textarea id="mail-content" rows="4" placeholder="Введите текст сообщения игроку..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label>Прикрепленные награды</label>
+                  <div class="grid grid-2">
+                    <div>
+                      <label class="sublabel">Золотые монеты</label>
+                      <input type="number" id="mail-reward-gold" placeholder="Количество золота" min="0" value="0">
+                    </div>
+                    <div>
+                      <label class="sublabel">Алмазы</label>
+                      <input type="number" id="mail-reward-diamond" placeholder="Количество алмазов" min="0" value="0">
+                    </div>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  <span>Отправить внутриигровое письмо</span>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Mail Guidelines -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Информация о почтовом сервисе</h3>
+            </div>
+            <div class="card-body">
+              <div class="info-box mb-3">
+                <h4>Мгновенная доставка</h4>
+                <p>При отправке письма подключенный игрок сразу получает визуальный Sproto-пуш <code>505 (mail_new_mail_notify)</code>, и у него загорается значок почты.</p>
+              </div>
+              <div class="info-box">
+                <h4>Автоматическое начисление</h4>
+                <p>Игрок может забрать золото и алмазы по кнопке «Получить» внутри почты клиента. Баланс обновится автоматически без перезахода в игру.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: CHAT -->
+      <section id="tab-chat" class="tab-pane">
+        <div class="grid grid-2">
+          <!-- Chat Broadcast Form -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Отправка сообщения в чат</h3>
+            </div>
+            <div class="card-body">
+              <form id="chat-send-form">
+                <div class="form-group">
+                  <label for="chat-channel">Канал чата</label>
+                  <select id="chat-channel">
+                    <option value="group_world">Мировой чат (group_world)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="chat-sender-name">Имя отправителя (Отображаемый ник)</label>
+                  <input type="text" id="chat-sender-name" value="SERVER" required>
+                </div>
+                <div class="form-group">
+                  <label for="chat-sender-uid">UID отправителя (0 для Сервера / UID игрока для подмены)</label>
+                  <input type="number" id="chat-sender-uid" value="0" required>
+                </div>
+                <div class="form-group">
+                  <label for="chat-message-text">Текст сообщения</label>
+                  <textarea id="chat-message-text" rows="3" placeholder="Введите сообщение..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  <span>Опубликовать в чат</span>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Chat History -->
+          <div class="card">
+            <div class="card-header">
+              <h3>История отправленных сообщений</h3>
+            </div>
+            <div class="card-body p-0">
+              <div class="chat-history-container" id="chat-history-list">
+                <p class="empty-state">История чата пуста.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: LIVE CONSOLE -->
+      <section id="tab-logs" class="tab-pane">
+        <div class="card console-card">
+          <div class="card-header flex-between">
+            <div class="console-controls">
+              <span class="live-badge"><span class="dot-pulse"></span> LIVE SSE</span>
+              <input type="text" id="log-search-filter" placeholder="Фильтр по тексту/UID..." class="input-search input-sm">
+            </div>
+            <div class="console-actions">
+              <button id="btn-clear-logs" class="btn btn-ghost btn-sm">Очистить</button>
+              <button id="btn-download-logs" class="btn btn-secondary btn-sm" onclick="downloadServerLogs()">Скачать лог</button>
+            </div>
+          </div>
+          <div class="card-body console-body" id="console-output">
+            <div class="console-line"><span class="time">[2026-08-23 00:00:00]</span> <span class="tag tag-boot">[BOOT]</span> Консоль подключена к серверу Area F2.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 7: SETTINGS & TUNING -->
+      <section id="tab-settings" class="tab-pane">
+        <div class="grid grid-2">
+          <!-- Server Configuration -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Параметры и рейты сервера</h3>
+            </div>
+            <div class="card-body">
+              <form id="settings-form">
+                <div class="form-group">
+                  <label for="conf-announcement">Объявление сервера (Бегущая строка)</label>
+                  <input type="text" id="conf-announcement" placeholder="Добро пожаловать в Area F2!">
+                </div>
+                <div class="form-group">
+                  <label for="conf-exp-mult">Множитель опыта (EXP Multiplier)</label>
+                  <input type="number" id="conf-exp-mult" step="0.1" min="0.1" max="100" value="1.0">
+                </div>
+                <div class="form-group">
+                  <label for="conf-gold-mult">Множитель золота (Gold Multiplier)</label>
+                  <input type="number" id="conf-gold-mult" step="0.1" min="0.1" max="100" value="1.0">
+                </div>
+                <div class="form-group checkbox-group">
+                  <label>
+                    <input type="checkbox" id="conf-gm-enabled">
+                    <span>Разрешить GM-команды в чате</span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label for="conf-admin-password">Новый пароль администратора (Оставьте пустым, чтобы не менять)</label>
+                  <input type="password" id="conf-admin-password" placeholder="Новый пароль...">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                  <span>Сохранить настройки</span>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Backup & Restore -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Резервное копирование базы игроков</h3>
+            </div>
+            <div class="card-body">
+              <p class="mb-3 text-muted">Вы можете скачать полный снимок базы данных игроков и восстановить его в любой момент.</p>
+              <button class="btn btn-secondary btn-block mb-3" onclick="exportBackupData()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Экспорт базы игроков (JSON)</span>
+              </button>
+              <div class="form-group">
+                <label for="restore-file-input">Восстановить из файла JSON</label>
+                <input type="file" id="restore-file-input" accept=".json">
+              </div>
+              <button class="btn btn-danger btn-block" onclick="importBackupData()">
+                <span>Восстановить базу</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- PLAYER EDIT MODAL -->
+  <div id="player-edit-modal" class="modal-overlay">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3 id="edit-modal-title">Редактирование профиля и статистики</h3>
+        <button class="btn-close" onclick="closeModal('player-edit-modal')">&times;</button>
+      </div>
+      <div class="modal-nav-tabs">
+        <button type="button" id="tab-btn-basic" class="modal-tab-btn active" onclick="switchPlayerModalTab('tab-basic', this)">👤 Профиль</button>
+        <button type="button" id="tab-btn-ranks" class="modal-tab-btn" onclick="switchPlayerModalTab('tab-ranks', this)">🏆 Ранги и титулы</button>
+        <button type="button" id="tab-btn-combat-all" class="modal-tab-btn" onclick="switchPlayerModalTab('tab-combat-all', this)">⚔️ Все режимы</button>
+        <button type="button" id="tab-btn-combat-ranked" class="modal-tab-btn" onclick="switchPlayerModalTab('tab-combat-ranked', this)">🎖️ Рейтинговые</button>
+      </div>
+      <div class="modal-body">
+        <form id="player-edit-form">
+          <input type="hidden" id="edit-uid">
+          
+          <!-- TAB 1: BASIC INFO -->
+          <div id="tab-basic" class="modal-tab-content active">
+            <div class="grid grid-2">
+              <div class="form-group">
+                <label for="edit-name">Никнейм</label>
+                <input type="text" id="edit-name" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-level">Уровень</label>
+                <input type="number" id="edit-level" min="1" max="1000" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-exp">Текущий опыт (EXP)</label>
+                <input type="number" id="edit-exp" min="0" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-gold">Золотые монеты (🪙)</label>
+                <input type="number" id="edit-gold" min="0" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-diamond">Алмазы (💎)</label>
+                <input type="number" id="edit-diamond" min="0" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-motto">Девиз / Подпись</label>
+                <input type="text" id="edit-motto">
+              </div>
+              <div class="form-group">
+                <label for="edit-icon">ID Аватарки</label>
+                <input type="number" id="edit-icon" min="0">
+              </div>
+              <div class="form-group">
+                <label for="edit-icon-frame">ID Рамки</label>
+                <input type="number" id="edit-icon-frame" min="0">
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: RANKS & TIERS -->
+          <div id="tab-ranks" class="modal-tab-content">
+            <div class="grid grid-2">
+              <div class="form-group">
+                <label for="edit-rank-score">Текущий рейтинг (Current Tier MMR)</label>
+                <input type="number" id="edit-rank-score" min="0" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-career-max-rank">Наивысший ранг (Highest Tier MMR)</label>
+                <input type="number" id="edit-career-max-rank" min="0">
+              </div>
+              <div class="form-group">
+                <label for="edit-king-emblem">Королевский знак (Royal / King Mark)</label>
+                <input type="number" id="edit-king-emblem" min="0" max="10">
+              </div>
+              <div class="form-group">
+                <label for="edit-rank-protect-score">Очки защиты ранга</label>
+                <input type="number" id="edit-rank-protect-score" min="0">
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: ALL MODES COMBAT -->
+          <div id="tab-combat-all" class="modal-tab-content">
+            <div class="grid grid-2">
+              <div class="form-group">
+                <label for="edit-kills">Убийства (Kills)</label>
+                <input type="number" id="edit-kills" min="0" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-deaths">Смерти (Deaths)</label>
+                <input type="number" id="edit-deaths" min="0" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-assists">Помощь (Assists)</label>
+                <input type="number" id="edit-assists" min="0" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-battle-times">Всего матчей</label>
+                <input type="number" id="edit-battle-times" min="0" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-win-times">Победы (Wins)</label>
+                <input type="number" id="edit-win-times" min="0" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-battle-score">Боевой счёт (Score)</label>
+                <input type="number" id="edit-battle-score" min="0">
+              </div>
+              <div class="form-group">
+                <label for="edit-mvp-count">Награды MVP</label>
+                <input type="number" id="edit-mvp-count" min="0">
+              </div>
+              <div class="form-group">
+                <label for="edit-headshots">Попаданий в голову</label>
+                <input type="number" id="edit-headshots" min="0">
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: RANKED MODE COMBAT -->
+          <div id="tab-combat-ranked" class="modal-tab-content">
+            <div class="grid grid-2">
+              <div class="form-group">
+                <label for="edit-rank-kills">Рейтинговые убийства</label>
+                <input type="number" id="edit-rank-kills" min="0">
+              </div>
+              <div class="form-group">
+                <label for="edit-rank-deaths">Рейтинговые смерти</label>
+                <input type="number" id="edit-rank-deaths" min="0">
+              </div>
+              <div class="form-group">
+                <label for="edit-rank-battles">Рейтинговые матчи</label>
+                <input type="number" id="edit-rank-battles" min="0">
+              </div>
+              <div class="form-group">
+                <label for="edit-rank-wins">Рейтинговые победы</label>
+                <input type="number" id="edit-rank-wins" min="0">
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('player-edit-modal')">Отмена</button>
+            <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRANT ITEM MODAL -->
+  <div id="grant-item-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Выдача предмета игроку</h3>
+        <button class="btn-close" onclick="closeModal('grant-item-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="grant-item-form">
+          <input type="hidden" id="grant-uid">
+          <div class="form-group">
+            <label for="grant-type">Тип предмета</label>
+            <select id="grant-type">
+              <option value="skin">Скин оружия (Skin ID)</option>
+              <option value="gold">Золотые монеты</option>
+              <option value="diamond">Алмазы</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="grant-id">ID предмета / скина</label>
+            <input type="number" id="grant-id" placeholder="Например 200101" value="200101">
+          </div>
+          <div class="form-group">
+            <label for="grant-count">Количество</label>
+            <input type="number" id="grant-count" min="1" value="1">
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('grant-item-modal')">Отмена</button>
+            <button type="submit" class="btn btn-primary">Выдать предмет</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE PLAYER MODAL -->
+  <div id="create-player-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Создание нового аккаунта</h3>
+        <button class="btn-close" onclick="closeModal('create-player-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="create-player-form">
+          <div class="form-group">
+            <label for="create-name">Никнейм игрока</label>
+            <input type="text" id="create-name" placeholder="Agent007" required>
+          </div>
+          <div class="form-group">
+            <label for="create-uid">UID (Оставьте пустым для автогенерации)</label>
+            <input type="number" id="create-uid" placeholder="1000005">
+          </div>
+          <div class="grid grid-2">
+            <div class="form-group">
+              <label for="create-gold">Начальное золото</label>
+              <input type="number" id="create-gold" value="50000" min="0">
+            </div>
+            <div class="form-group">
+              <label for="create-diamond">Начальные алмазы</label>
+              <input type="number" id="create-diamond" value="1000" min="0">
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('create-player-modal')">Отмена</button>
+            <button type="submit" class="btn btn-primary">Создать аккаунт</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

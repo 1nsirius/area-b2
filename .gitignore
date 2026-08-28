@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs and runtime databases
+*.log
+*.log.*
+*.pid
+server_requests*.log
+mock_server_running.log
+logcat*.txt
+
+# Temporary and local test outputs
+.tmp*
+_tmp*
+*.bak*
+
+# Environment and IDE
+.venv/
+env/
+venv/
+.idea/
+.vscode/
+.vs/
