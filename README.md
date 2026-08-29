@@ -17,10 +17,9 @@
 * Игровое лобби (TCP 12345): Комнаты лобби, управление командами, матчмейкинг, общий и командный чат, система друзей.
 * События и миссии: 7-дневные события входа (Sign-in), ежедневные задания, награды за достижение 1–60 уровней с мгновенной синхронизацией баланса.
 * Экономика и инвентарь: Покупка оперативников, оружия, скинов, сундуков, открытие наград и система почты.
-* Боевой сервер: UDP/TCP синхронизация матчей, стрельба, разрушение стен/баррикад, использование гаджетов, обезвреживание заряда.
 * Веб-панель администратора (HTTP 8080): Управление аккаунтами в реальном времени, изменение уровня, ранга, валюты (золото/алмазы) и выдача предметов.
 * База данных: SQLite база данных для надежного хранения профилей и игрового состояния.
-* Клиент в комплекте: Пропатченный APK для Android, готовый к работе без настройки сертификатов и перенаправления трафика.
+* Клиент: Пропатченный APK для Android, готовый к работе без настройки сертификатов и перенаправления трафика.
 
 ---
 
@@ -29,6 +28,7 @@
 * Операционная система: Windows 10/11, Linux (Ubuntu 20.04+) или macOS.
 * Python: Версия 3.10 или выше (рекомендуется Python 3.11).
 * Права суперпользователя: Запуск от имени Администратора (Windows) или через sudo (Linux) обязателен (для привязки к HTTPS-порту 443).
+* Версия Android до 10 версии
 
 ---
 
@@ -86,7 +86,7 @@ sudo python3 run_https_443.py
 ### 2. Последовательность действий при запуске игры:
 
 1. Ввод IP-адреса сервера:
-   * При первом запуске игры на экране появится всплывающее диалоговое окно для ввода IP-адреса сервера.
+   * При запуске игры на экране появится всплывающее диалоговое окно для ввода IP-адреса сервера.
    * Введите IP-адрес машины, на которой запущен сервер (например, 127.0.0.1 для эмулятора на том же ПК или локальный IP-адрес вашего сервера в сети) и подтвердите ввод. Весь сетевой трафик игры будет автоматически направляться на этот адрес.
 
 2. Выбор способа авторизации (Facebook):
@@ -94,7 +94,7 @@ sudo python3 run_https_443.py
 
 3. Ввод логина аккаунта:
    * В появившемся диалоговом окне найдите текстовое поле с плейсхолдером <EMPTY> (или пустое поле ввода).
-   * Введите ваше желаемое имя пользователя/логин (например player1 или 1nsirius) и нажмите кнопку подтверждения.
+   * Введите ваше желаемое имя пользователя/логин и нажмите кнопку подтверждения (Далее вход в аккаунт будет осуществляться по этому логину).
    * Сервер автоматически создаст новый профиль (или загрузит существующий), и вы попадете в главное лобби игры.
 
 ---
@@ -147,7 +147,6 @@ A standalone server suite for the tactical mobile shooter Area F2. Emulates the 
 * Game Lobby (TCP 12345): Lobby rooms, team management, matchmaking, global/team chat, friend system.
 * Events & Missions: 7-day sign-in novice event, daily tasks, milestone level 1–60 progress rewards with instant balance synchronization.
 * Economy & Inventory: Purchase operators, weapons, skins, crates, claim rewards, and mail.
-* Battle Server: UDP/TCP match synchronization, shooting, wall/barricade destruction, operator gadgets, and defuser plant/defuse logic.
 * Web Admin Panel (HTTP 8080): Real-time player management, modify player level, rank score, gold/diamonds, and grant inventory items.
 * Database: Lightweight SQLite database for profile persistence.
 * Patched Client Included: Patched Android APK included — works directly without certificate installation or traffic redirection.
@@ -159,6 +158,7 @@ A standalone server suite for the tactical mobile shooter Area F2. Emulates the 
 * OS: Windows 10/11, Linux (Ubuntu 20.04+), or macOS.
 * Python: Version 3.10 or higher (Python 3.11 recommended).
 * Root / Administrator privileges: Running as Administrator (Windows) or via sudo (Linux) is required to bind standard HTTPS port 443.
+* Android version 10 or lower.
 
 ---
 
@@ -224,7 +224,7 @@ The client APK is pre-patched: installing custom SSL certificates or setting up 
 
 3. Account Username Entry:
    * In the popup input dialog, locate the text input field labeled with placeholder <EMPTY> (or empty input box).
-   * Type your desired account username/login (e.g. player1 or 1nsirius) and press confirm.
+   * Type your desired account username/login and press confirm (From now on, you will log into your account using this login.).
    * The server will automatically initialize or load your player profile and log you into the game lobby.
 
 ---
