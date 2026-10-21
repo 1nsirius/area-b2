@@ -782,7 +782,7 @@ PKT_REQ_ROBOT_FIRE                        = 0xF426E  # 1000046
 PKT_REQ_GAME_INFO                         = 0x4AD  # 1197
 PKT_RSP_GAME_INFO                         = 0x4AE  # 1198
 PKT_RSP_GAME_STAGE                        = 0x63   # 99
-PKT_RSP_SPAWN_BOMB_REGION                 = 0x77   # 119
+PKT_RSP_SPAWN_BOMB_REGION                 = 0x28C  # 652 (was erroneously 0x77/119)
 PKT_RSP_CRITICAL_REGION_STATE            = 0x78   # 120
 
 PKT_HEARTBEAT            = 0x7D0   # 2000  (empty keepalive)
@@ -8305,6 +8305,8 @@ class BattleSession:
                                 p.sub_skill_id = int(p_room["sub_skill_id"])
                             if p_room.get("spawn_region_id") is not None:
                                 p.born_region_id = int(p_room["spawn_region_id"])
+                            elif p_room.get("region_id") is not None:
+                                p.born_region_id = int(p_room["region_id"])
 
                             try:
                                 if p.sock:
@@ -8961,13 +8963,24 @@ class BattleSession:
         # spawn_region_id from prebattle when available.
         spawn_region_raw = getattr(for_player, 'born_region_id', None)
         if spawn_region_raw is None:
-            spawn_region_raw = gs.get('spawn_region_id', gs.get('region_id', 999))
+            if for_player.camp == BATTLE_CAMP_ATTACKER:
+                spawn_region_raw = p_room_for_me.get('region_id') if p_room_for_me.get('region_id') is not None else (
+                    p_room_for_me.get('spawn_region_id') if p_room_for_me.get('spawn_region_id') is not None else (
+                        gs.get('attacker_spawn_region_id', 0)
+                    )
+                )
+            else:
+                spawn_region_raw = p_room_for_me.get('region_id') if p_room_for_me.get('region_id') is not None else (
+                    p_room_for_me.get('spawn_region_id') if p_room_for_me.get('spawn_region_id') is not None else (
+                        gs.get('spawn_region_id', gs.get('region_id', 999))
+                    )
+                )
         region_id = spawn_region_raw
         try:
             if int(region_id) < 0:
-                region_id = gs.get('region_id', 999)
+                region_id = 0 if for_player.camp == BATTLE_CAMP_ATTACKER else gs.get('region_id', 999)
         except Exception:
-            region_id = gs.get('region_id', 999)
+            region_id = 0 if for_player.camp == BATTLE_CAMP_ATTACKER else gs.get('region_id', 999)
         have_defuser = gs.get('is_have_defuser')
 
         # Build CharacterInfo for this player.
@@ -9073,7 +9086,10 @@ class BattleSession:
             if p_region is None:
                 p_region = p_room.get("region_id") if p_room.get("region_id") is not None else p_room.get("spawn_region_id")
             if p_region is None:
-                p_region = region_id
+                if p_camp == BATTLE_CAMP_ATTACKER:
+                    p_region = gs.get('attacker_spawn_region_id', 0)
+                else:
+                    p_region = region_id
 
             p_spawn_pos, p_spawn_rot, _ = self._resolve_spawn_transform(
                 map_id=map_id_int,
@@ -14225,6 +14241,10 @@ def _v2_handle_req_enter_battle(
         if player.camp == BATTLE_CAMP_ATTACKER:
             if game_state.get("attacker_spawn_region_id") is not None:
                 player.born_region_id = game_state.get("attacker_spawn_region_id")
+            elif game_state.get("spawn_region_id") is not None:
+                player.born_region_id = game_state.get("spawn_region_id")
+            elif getattr(player, "born_region_id", None) is None:
+                player.born_region_id = 0
         else:
             if game_state.get("region_id") is not None:
                 player.born_region_id = game_state.get("region_id")
@@ -21307,6 +21327,10 @@ def _process_packet(
             if player.camp == BATTLE_CAMP_ATTACKER:
                 if game_state.get("attacker_spawn_region_id") is not None:
                     player.born_region_id = game_state.get("attacker_spawn_region_id")
+                elif game_state.get("spawn_region_id") is not None:
+                    player.born_region_id = game_state.get("spawn_region_id")
+                elif getattr(player, "born_region_id", None) is None:
+                    player.born_region_id = 0
             else:
                 if game_state.get("region_id") is not None:
                     player.born_region_id = game_state.get("region_id")
