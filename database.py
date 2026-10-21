@@ -1,6 +1,7 @@
 import sqlite3
 import json
 import logging
+import time
 from pathlib import Path
 
 logger = logging.getLogger("areaf2_server.db")
@@ -311,20 +312,96 @@ def get_all_profiles() -> dict:
         res[str(d['uid'])] = d
     return res
 
-def get_or_create_uid_for_account(account: str) -> int:
+def ensure_profile(uid: int, name: str = "") -> dict:
+    conn = get_db()
+    prof = get_profile(uid)
+    if prof:
+        return prof
+    
+    now = int(time.time())
+    prof_name = str(name).strip() if str(name).strip() else f"Player{str(uid)[-4:]}"
+    prof_dict = {
+        "uid": uid,
+        "name": prof_name,
+        "level": 1,
+        "exp": 0,
+        "icon": 0,
+        "icon_url": "",
+        "icon_frame": 0,
+        "time_zone": 0,
+        "current_season_id": 1,
+        "create_time": now,
+        "gold": 10000,
+        "diamond": 1000,
+        "rank_score": 0,
+        "show_character_id": 1,
+        "update_time": now
+    }
+    create_profile(prof_dict)
+    return prof_dict
+
+def get_or_create_uid_and_flag_for_account(account: str) -> tuple[int, bool]:
+    acc_str = str(account or "").strip()
+    if not acc_str:
+        acc_str = f"Guest_{int(time.time())}"
+
     conn = get_db()
     with conn:
-        row = conn.execute("SELECT uid FROM accounts WHERE account = ?", (account,)).fetchone()
+        # 1. Exact match in accounts table
+        row = conn.execute("SELECT uid FROM accounts WHERE account = ?", (acc_str,)).fetchone()
         if row:
-            return row['uid']
-        
-        # Allocate new UID
-        row = conn.execute("SELECT MAX(uid) as m FROM accounts").fetchone()
-        max_mapped = row['m'] if row and row['m'] else 1000000
-        
-        row_p = conn.execute("SELECT MAX(uid) as m FROM profiles").fetchone()
-        max_profile = row_p['m'] if row_p and row_p['m'] else 1000000
-        
-        new_uid = max(max_mapped, max_profile) + 1
-        conn.execute("INSERT INTO accounts (account, uid) VALUES (?, ?)", (account, new_uid))
-        return new_uid
+            uid_val = int(row['uid'])
+            ensure_profile(uid_val, acc_str)
+            return uid_val, False
+
+        # 2. Case-insensitive match in accounts table
+        row = conn.execute("SELECT uid FROM accounts WHERE LOWER(account) = LOWER(?)", (acc_str,)).fetchone()
+        if row:
+            uid_val = int(row['uid'])
+            ensure_profile(uid_val, acc_str)
+            return uid_val, False
+
+        # 3. Check profiles table by name (case-insensitive)
+        row = conn.execute("SELECT uid FROM profiles WHERE LOWER(name) = LOWER(?)", (acc_str,)).fetchone()
+        if row:
+            matched_uid = int(row['uid'])
+            conn.execute("INSERT OR IGNORE INTO accounts (account, uid) VALUES (?, ?)", (acc_str, matched_uid))
+            return matched_uid, False
+
+        # 4. If account string is numeric (e.g. "1000004"), check if valid UID in profiles
+        if acc_str.isdigit():
+            val = int(acc_str)
+            row = conn.execute("SELECT uid FROM profiles WHERE uid = ?", (val,)).fetchone()
+            if row:
+                conn.execute("INSERT OR IGNORE INTO accounts (account, uid) VALUES (?, ?)", (acc_str, val))
+                return val, False
+
+        # 5. New Account! Allocate next available UID in 1000000+ range
+        row_a = conn.execute("SELECT MAX(uid) as m FROM accounts WHERE uid < 9000000").fetchone()
+        max_a = row_a['m'] if row_a and row_a['m'] else 1000000
+
+        row_p = conn.execute("SELECT MAX(uid) as m FROM profiles WHERE uid < 9000000").fetchone()
+        max_p = row_p['m'] if row_p and row_p['m'] else 1000000
+
+        new_uid = max(int(max_a), int(max_p)) + 1
+        if new_uid < 1000001:
+            new_uid = 1000001
+
+        # Insert account mapping
+        conn.execute("INSERT INTO accounts (account, uid) VALUES (?, ?)", (acc_str, new_uid))
+
+        # Insert new profile
+        now = int(time.time())
+        conn.execute("""
+            INSERT OR IGNORE INTO profiles (
+                uid, name, level, exp, icon, icon_url, icon_frame,
+                time_zone, current_season_id, create_time, gold, diamond,
+                rank_score, show_character_id, update_time
+            ) VALUES (?, ?, 1, 0, 0, '', 0, 0, 1, ?, 10000, 1000, 0, 1, ?)
+        """, (new_uid, acc_str, now, now))
+
+        return new_uid, True
+
+def get_or_create_uid_for_account(account: str) -> int:
+    uid, _ = get_or_create_uid_and_flag_for_account(account)
+    return uid

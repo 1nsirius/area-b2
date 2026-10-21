@@ -1,0 +1,1748 @@
+{
+  "level00_tra": [
+    {
+      "id": 26,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 1,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    }
+  ],
+  "level02_can": [
+    {
+      "id": 54,
+      "go_name": "f1_break_roof03",
+      "asset_path_id": 6609310223391697640,
+      "matched_asset": "asset_f1_break_roof03",
+      "blocks_count": 302,
+      "wall_type": 0
+    },
+    {
+      "id": 89,
+      "go_name": "break_wall250 (1)",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 44,
+      "go_name": "break_wall250x2_175x2",
+      "asset_path_id": 2011348587047876429,
+      "matched_asset": "asset_break_wall250x2_175x2",
+      "blocks_count": 172,
+      "wall_type": 2
+    },
+    {
+      "id": 56,
+      "go_name": "break_wall250x4",
+      "asset_path_id": 7362242865941980482,
+      "matched_asset": "asset_break_wall250x4",
+      "blocks_count": 196,
+      "wall_type": 2
+    },
+    {
+      "id": 400,
+      "go_name": "break_lockfloor01 (6)",
+      "asset_path_id": -2598087603278986210,
+      "matched_asset": "asset_break_lockfloor01",
+      "blocks_count": 26,
+      "wall_type": 1
+    },
+    {
+      "id": 51,
+      "go_name": "f2_break_floor03",
+      "asset_path_id": -2611784466403460402,
+      "matched_asset": "asset_f2_break_floor03",
+      "blocks_count": 235,
+      "wall_type": 1
+    },
+    {
+      "id": 45,
+      "go_name": "break_wall175x4",
+      "asset_path_id": 8864855081903871892,
+      "matched_asset": "asset_break_wall250x3",
+      "blocks_count": 151,
+      "wall_type": 2
+    },
+    {
+      "id": 50,
+      "go_name": "f2_break_floor01",
+      "asset_path_id": 718403392954855223,
+      "matched_asset": "asset_f2_break_floor01",
+      "blocks_count": 256,
+      "wall_type": 1
+    },
+    {
+      "id": 53,
+      "go_name": "f1_break_roof01",
+      "asset_path_id": -6091158023388037867,
+      "matched_asset": "asset_f1_break_roof01",
+      "blocks_count": 298,
+      "wall_type": 0
+    },
+    {
+      "id": 48,
+      "go_name": "break_wall250x2 (4)",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 46,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 90,
+      "go_name": "break_wall250x2 (4)",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 47,
+      "go_name": "break_wall250x2 (3)",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 91,
+      "go_name": "break_wall250x2 (4)",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 49,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 92,
+      "go_name": "break_wall250x2 (5)",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 401,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 398,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 371,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 55,
+      "go_name": "break_wall175x3",
+      "asset_path_id": 3475666276409940437,
+      "matched_asset": "asset_break_wall175x3",
+      "blocks_count": 107,
+      "wall_type": 2
+    },
+    {
+      "id": 65,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 71,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 37,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 13,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 25,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 31,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 19,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 7,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 93,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 85,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 43,
+      "go_name": "f3_break_floor01",
+      "asset_path_id": 4928975365597993539,
+      "matched_asset": "asset_f3_break_floor01",
+      "blocks_count": 237,
+      "wall_type": 1
+    },
+    {
+      "id": 394,
+      "go_name": "break_lockfloor03",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 52,
+      "go_name": "f2_break_roof01",
+      "asset_path_id": -8766377465132302554,
+      "matched_asset": "asset_f2_break_roof01",
+      "blocks_count": 438,
+      "wall_type": 0
+    },
+    {
+      "id": 382,
+      "go_name": "break_lockfloor01 (6)",
+      "asset_path_id": -2598087603278986210,
+      "matched_asset": "asset_break_lockfloor01",
+      "blocks_count": 26,
+      "wall_type": 1
+    },
+    {
+      "id": 377,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 383,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 386,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 389,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 395,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 374,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 392,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 380,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 1,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 97,
+      "go_name": "can_carpet01",
+      "asset_path_id": -7175385544118124391,
+      "matched_asset": "asset_can_carpet01",
+      "blocks_count": 60,
+      "wall_type": 1
+    },
+    {
+      "id": 98,
+      "go_name": "can_carpet01 (1)",
+      "asset_path_id": -7175385544118124391,
+      "matched_asset": "asset_can_carpet01",
+      "blocks_count": 60,
+      "wall_type": 1
+    },
+    {
+      "id": 391,
+      "go_name": "break_lockfloor03 (1)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 373,
+      "go_name": "break_lockfloor03 (1)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 397,
+      "go_name": "break_lockfloor03",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 388,
+      "go_name": "break_lockfloor03 (2)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 379,
+      "go_name": "break_lockfloor03 (3)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 370,
+      "go_name": "break_lockfloor03 (1)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 376,
+      "go_name": "break_lockfloor03 (2)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 385,
+      "go_name": "break_lockfloor03 (1)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 57,
+      "go_name": "break_wall175x3",
+      "asset_path_id": 3475666276409940437,
+      "matched_asset": "asset_break_wall175x3",
+      "blocks_count": 107,
+      "wall_type": 2
+    },
+    {
+      "id": 77,
+      "go_name": "break_wall175x3",
+      "asset_path_id": 3475666276409940437,
+      "matched_asset": "asset_break_wall175x3",
+      "blocks_count": 107,
+      "wall_type": 2
+    }
+  ],
+  "level03_mex": [
+    {
+      "id": 166,
+      "go_name": "f1_break_roof03",
+      "asset_path_id": -7442483241584707721,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 161,
+      "go_name": "f2_break_floor03",
+      "asset_path_id": 7400876179896248417,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 163,
+      "go_name": "f2_break_floor05",
+      "asset_path_id": -7739454390343514296,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 162,
+      "go_name": "f2_break_floor04",
+      "asset_path_id": -4476967671748844832,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 93,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 15,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 9,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 73,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 141,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 135,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 107,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 295,
+      "go_name": "break_lockfloor03",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 1,
+      "go_name": "break_wall250x3",
+      "asset_path_id": 8864855081903871892,
+      "matched_asset": "asset_break_wall250x3",
+      "blocks_count": 151,
+      "wall_type": 2
+    },
+    {
+      "id": 55,
+      "go_name": "break_wall250x3",
+      "asset_path_id": 8864855081903871892,
+      "matched_asset": "asset_break_wall250x3",
+      "blocks_count": 151,
+      "wall_type": 2
+    },
+    {
+      "id": 85,
+      "go_name": "break_wall250_175x2",
+      "asset_path_id": -394396126183624478,
+      "matched_asset": "asset_break_wall250_175x2",
+      "blocks_count": 98,
+      "wall_type": 2
+    },
+    {
+      "id": 113,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 117,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 29,
+      "go_name": "break_wall175x4",
+      "asset_path_id": 8864855081903871892,
+      "matched_asset": "asset_break_wall250x3",
+      "blocks_count": 151,
+      "wall_type": 2
+    },
+    {
+      "id": 159,
+      "go_name": "f2_break_floor01",
+      "asset_path_id": 4044430983964382294,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 165,
+      "go_name": "f1_break_roof02",
+      "asset_path_id": -8942112671046789159,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 298,
+      "go_name": "break_lockfloor01 (6)",
+      "asset_path_id": -2598087603278986210,
+      "matched_asset": "asset_break_lockfloor01",
+      "blocks_count": 26,
+      "wall_type": 1
+    },
+    {
+      "id": 307,
+      "go_name": "break_lockfloor01 (6)",
+      "asset_path_id": -2598087603278986210,
+      "matched_asset": "asset_break_lockfloor01",
+      "blocks_count": 26,
+      "wall_type": 1
+    },
+    {
+      "id": 304,
+      "go_name": "break_lockfloor01 (6)",
+      "asset_path_id": -2598087603278986210,
+      "matched_asset": "asset_break_lockfloor01",
+      "blocks_count": 26,
+      "wall_type": 1
+    },
+    {
+      "id": 310,
+      "go_name": "break_lockfloor01 (6)",
+      "asset_path_id": -2598087603278986210,
+      "matched_asset": "asset_break_lockfloor01",
+      "blocks_count": 26,
+      "wall_type": 1
+    },
+    {
+      "id": 311,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 302,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 296,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 305,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 308,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 299,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 79,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 153,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 121,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 147,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 164,
+      "go_name": "f1_break_roof01",
+      "asset_path_id": 9063240084380423452,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 313,
+      "go_name": "break_lockfloor03 (2)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 301,
+      "go_name": "break_lockfloor03 (1)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 167,
+      "go_name": "f1_break_roof04",
+      "asset_path_id": 6559028038694252158,
+      "matched_asset": "asset_f1_break_roof04",
+      "blocks_count": 332,
+      "wall_type": 0
+    },
+    {
+      "id": 168,
+      "go_name": "f1_break_roof05",
+      "asset_path_id": -5381205886217983570,
+      "matched_asset": "asset_f1_break_roof05",
+      "blocks_count": 271,
+      "wall_type": 0
+    },
+    {
+      "id": 127,
+      "go_name": "break_wall175x3",
+      "asset_path_id": 3475666276409940437,
+      "matched_asset": "asset_break_wall175x3",
+      "blocks_count": 107,
+      "wall_type": 2
+    },
+    {
+      "id": 21,
+      "go_name": "break_wall175x3",
+      "asset_path_id": 3475666276409940437,
+      "matched_asset": "asset_break_wall175x3",
+      "blocks_count": 107,
+      "wall_type": 2
+    },
+    {
+      "id": 99,
+      "go_name": "break_wall175x3",
+      "asset_path_id": 3475666276409940437,
+      "matched_asset": "asset_break_wall175x3",
+      "blocks_count": 107,
+      "wall_type": 2
+    },
+    {
+      "id": 39,
+      "go_name": "break_wall175x3",
+      "asset_path_id": 3475666276409940437,
+      "matched_asset": "asset_break_wall175x3",
+      "blocks_count": 107,
+      "wall_type": 2
+    },
+    {
+      "id": 47,
+      "go_name": "break_wall175x3",
+      "asset_path_id": 3475666276409940437,
+      "matched_asset": "asset_break_wall175x3",
+      "blocks_count": 107,
+      "wall_type": 2
+    },
+    {
+      "id": 314,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 63,
+      "go_name": "break_wall250x2_175x2",
+      "asset_path_id": 2011348587047876429,
+      "matched_asset": "asset_break_wall250x2_175x2",
+      "blocks_count": 172,
+      "wall_type": 2
+    },
+    {
+      "id": 160,
+      "go_name": "f2_break_floor02",
+      "asset_path_id": -2260432771936300498,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    }
+  ],
+  "level04_rus": [
+    {
+      "id": 357,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 37,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 135,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 25,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 31,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 43,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 153,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 141,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 73,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 147,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 1,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 172,
+      "go_name": "mesh_f1_break_roof01",
+      "asset_path_id": 5201134072457950522,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 13,
+      "go_name": "break_wall250_175",
+      "asset_path_id": -6685780878042808917,
+      "matched_asset": "asset_break_wall250_175",
+      "blocks_count": 83,
+      "wall_type": 2
+    },
+    {
+      "id": 19,
+      "go_name": "break_wall250_175",
+      "asset_path_id": -6685780878042808917,
+      "matched_asset": "asset_break_wall250_175",
+      "blocks_count": 83,
+      "wall_type": 2
+    },
+    {
+      "id": 93,
+      "go_name": "break_wall250_175",
+      "asset_path_id": -6685780878042808917,
+      "matched_asset": "asset_break_wall250_175",
+      "blocks_count": 83,
+      "wall_type": 2
+    },
+    {
+      "id": 171,
+      "go_name": "mesh_f1_break_floor05",
+      "asset_path_id": -126954873986751663,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 111,
+      "go_name": "break_wall250x3",
+      "asset_path_id": 8864855081903871892,
+      "matched_asset": "asset_break_wall250x3",
+      "blocks_count": 151,
+      "wall_type": 2
+    },
+    {
+      "id": 174,
+      "go_name": "mesh_f1_break_roof03",
+      "asset_path_id": -846611031814615636,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 168,
+      "go_name": "mesh_f1_break_floor02",
+      "asset_path_id": 719593196348482464,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 89,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 131,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 159,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 163,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 170,
+      "go_name": "mesh_f1_break_floor04",
+      "asset_path_id": 4953089101199967427,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 173,
+      "go_name": "mesh_f1_break_roof02",
+      "asset_path_id": -3744007532554707108,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 169,
+      "go_name": "mesh_f1_break_floor03",
+      "asset_path_id": 8607175693965550201,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 329,
+      "go_name": "break_lockfloor01 (6)",
+      "asset_path_id": -2598087603278986210,
+      "matched_asset": "asset_break_lockfloor01",
+      "blocks_count": 26,
+      "wall_type": 1
+    },
+    {
+      "id": 332,
+      "go_name": "break_lockfloor01 (6)",
+      "asset_path_id": -2598087603278986210,
+      "matched_asset": "asset_break_lockfloor01",
+      "blocks_count": 26,
+      "wall_type": 1
+    },
+    {
+      "id": 353,
+      "go_name": "break_lockfloor01 (6)",
+      "asset_path_id": -2598087603278986210,
+      "matched_asset": "asset_break_lockfloor01",
+      "blocks_count": 26,
+      "wall_type": 1
+    },
+    {
+      "id": 351,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 327,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 333,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 348,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 354,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 336,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 345,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 330,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 342,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 339,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 7,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 61,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 99,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 125,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 105,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 49,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 55,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 119,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 67,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 326,
+      "go_name": "break_lockfloor03",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 347,
+      "go_name": "break_lockfloor03 (5)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 341,
+      "go_name": "break_lockfloor03 (3)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 344,
+      "go_name": "break_lockfloor03 (4)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 335,
+      "go_name": "break_lockfloor03 (1)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 350,
+      "go_name": "break_lockfloor03 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 338,
+      "go_name": "break_lockfloor03 (2)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 356,
+      "go_name": "break_lockfloor03 (5)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 167,
+      "go_name": "mesh_f1_break_floor01",
+      "asset_path_id": 6476053565997036477,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 79,
+      "go_name": "break_wall250x2_175x2",
+      "asset_path_id": 2011348587047876429,
+      "matched_asset": "asset_break_wall250x2_175x2",
+      "blocks_count": 172,
+      "wall_type": 2
+    },
+    {
+      "id": 176,
+      "go_name": "mesh_f1_break_roof05",
+      "asset_path_id": -5776848151331644306,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 175,
+      "go_name": "mesh_f1_break_roof04",
+      "asset_path_id": -5774796563636888646,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    }
+  ],
+  "level05_jpn": [
+    {
+      "id": 141,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 85,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 171,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 125,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 91,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 41,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 35,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 101,
+      "go_name": "break_wall175X2",
+      "asset_path_id": -5000415512809539120,
+      "matched_asset": "asset_break_wall175x2",
+      "blocks_count": 69,
+      "wall_type": 2
+    },
+    {
+      "id": 206,
+      "go_name": "mesh_f1_break_roof01",
+      "asset_path_id": -6943350765886520340,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 151,
+      "go_name": "break_wall250_175",
+      "asset_path_id": -6685780878042808917,
+      "matched_asset": "asset_break_wall250_175",
+      "blocks_count": 83,
+      "wall_type": 2
+    },
+    {
+      "id": 57,
+      "go_name": "break_wall250_175x2",
+      "asset_path_id": -394396126183624478,
+      "matched_asset": "asset_break_wall250_175x2",
+      "blocks_count": 98,
+      "wall_type": 2
+    },
+    {
+      "id": 107,
+      "go_name": "break_wall250_175x2",
+      "asset_path_id": -394396126183624478,
+      "matched_asset": "asset_break_wall250_175x2",
+      "blocks_count": 98,
+      "wall_type": 2
+    },
+    {
+      "id": 183,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 181,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 177,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 121,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 167,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 97,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 81,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 137,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 147,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 163,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 185,
+      "go_name": "break_wall250",
+      "asset_path_id": -2617618940208517534,
+      "matched_asset": "asset_break_wall250",
+      "blocks_count": 54,
+      "wall_type": 2
+    },
+    {
+      "id": 47,
+      "go_name": "break_wall175x4",
+      "asset_path_id": 8864855081903871892,
+      "matched_asset": "asset_break_wall250x3",
+      "blocks_count": 151,
+      "wall_type": 2
+    },
+    {
+      "id": 65,
+      "go_name": "break_wall175x4",
+      "asset_path_id": 8864855081903871892,
+      "matched_asset": "asset_break_wall250x3",
+      "blocks_count": 151,
+      "wall_type": 2
+    },
+    {
+      "id": 203,
+      "go_name": "mesh_f2_break_floor04",
+      "asset_path_id": -1398367598337907267,
+      "matched_asset": "asset_f2_break_floor04",
+      "blocks_count": 53,
+      "wall_type": 1
+    },
+    {
+      "id": 202,
+      "go_name": "mesh_f2_break_floor01",
+      "asset_path_id": 8571614654792500448,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 207,
+      "go_name": "mesh_f1_break_roof02",
+      "asset_path_id": 6164042409067675976,
+      "matched_asset": "asset_f1_break_roof02",
+      "blocks_count": 339,
+      "wall_type": 0
+    },
+    {
+      "id": 201,
+      "go_name": "mesh_f2_break_floor03",
+      "asset_path_id": -3676812661029247025,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 217,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 211,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 223,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 214,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 220,
+      "go_name": "break_lockfloor02 (6)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 157,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 75,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 189,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 115,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 195,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 21,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 131,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 1,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 15,
+      "go_name": "break_wall250x2",
+      "asset_path_id": 7118753520247145506,
+      "matched_asset": "asset_break_wall250x2",
+      "blocks_count": 101,
+      "wall_type": 2
+    },
+    {
+      "id": 205,
+      "go_name": "mesh_f2_break_floor02",
+      "asset_path_id": 8586319675961718992,
+      "matched_asset": "asset_f2_break_floor02",
+      "blocks_count": 452,
+      "wall_type": 1
+    },
+    {
+      "id": 216,
+      "go_name": "break_lockfloor03 (2)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 222,
+      "go_name": "break_lockfloor03 (4)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 219,
+      "go_name": "break_lockfloor03 (3)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 213,
+      "go_name": "break_lockfloor03 (1)",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 210,
+      "go_name": "break_lockfloor03",
+      "asset_path_id": -2092443446064918625,
+      "matched_asset": "asset_break_lockfloor02",
+      "blocks_count": 20,
+      "wall_type": 1
+    },
+    {
+      "id": 27,
+      "go_name": "break_wall175x3",
+      "asset_path_id": 3475666276409940437,
+      "matched_asset": "asset_break_wall175x3",
+      "blocks_count": 107,
+      "wall_type": 2
+    },
+    {
+      "id": 7,
+      "go_name": "break_wall175x3",
+      "asset_path_id": 3475666276409940437,
+      "matched_asset": "asset_break_wall175x3",
+      "blocks_count": 107,
+      "wall_type": 2
+    },
+    {
+      "id": 208,
+      "go_name": "mesh_f1_break_roof03",
+      "asset_path_id": -3875328872070809084,
+      "matched_asset": null,
+      "blocks_count": 0,
+      "wall_type": null
+    },
+    {
+      "id": 204,
+      "go_name": "mesh_f2_break_floor05",
+      "asset_path_id": -4355895810301918982,
+      "matched_asset": "asset_f2_break_floor05",
+      "blocks_count": 516,
+      "wall_type": 1
+    }
+  ]
+}

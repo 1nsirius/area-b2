@@ -3,6 +3,7 @@
 
    Port: set env HTTPS_PORT=8443 for tests if 443 is blocked (game still needs 443).
 """
+import copy
 import os
 import ssl
 import sys
@@ -38,8 +39,9 @@ except Exception:
     _HAS_CRYPTO = False
 
 DIR = Path(__file__).resolve().parent
-PORT = int(os.environ.get("HTTPS_PORT", "443"))
-HTTP_PORT = int(os.environ.get("HTTP_PORT", "80"))
+_IS_TERMUX_FLAG = any(arg in sys.argv for arg in ("--termux", "-t", "--non-root", "--userland"))
+PORT = int(os.environ.get("HTTPS_PORT", "8443" if _IS_TERMUX_FLAG else "443"))
+HTTP_PORT = int(os.environ.get("HTTP_PORT", "8080" if _IS_TERMUX_FLAG else "80"))
 # Many builds expect a separate TCP lobby/game endpoint (commonly port 12000).
 # Default to 12000 to match those expectations; override via GAME_PORT if needed.
 GAME_PORT = int(os.environ.get("GAME_PORT", "12000"))
@@ -1410,52 +1412,14 @@ def _online_profile_from_player_data(pd: object) -> dict[str, object]:
 
 
 def _get_or_create_uid_for_account(account: str) -> int:
-    with _ONLINE_LOCK:
-        mapping = _ONLINE_STATE.get("account_to_uid")
-        if not isinstance(mapping, dict):
-            mapping = {}
-            _ONLINE_STATE["account_to_uid"] = mapping
-        if account in mapping:
-            return mapping[account]
-        new_uid = 1000001
-        if mapping:
-            new_uid = max(mapping.values()) + 1
-        mapping[account] = new_uid
-        _ONLINE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with _ONLINE_STATE_PATH.open("w", encoding="utf-8", newline="\n") as f:
-            json.dump(_ONLINE_STATE, f, ensure_ascii=False, indent=2)
-        return new_uid
+    import database
+    return database.get_or_create_uid_for_account(account)
 
 def _online_ensure_profile(uid: object, *, local_pd: object = None) -> dict[str, object]:
+    import database
     uid_s = _uid_str(uid, "1000001")
-    changed = False
-    with _ONLINE_LOCK:
-        profiles = _ONLINE_STATE.get("profiles")
-        if not isinstance(profiles, dict):
-            profiles = {}
-            _ONLINE_STATE["profiles"] = profiles
-            changed = True
-
-        profile_obj = profiles.get(uid_s)
-        if not isinstance(profile_obj, dict):
-            profile_obj = _online_default_profile(uid_s)
-            profiles[uid_s] = profile_obj
-            changed = True
-
-        if isinstance(local_pd, dict):
-            local_uid = _uid_str(local_pd.get("uid"), "1000001")
-            if local_uid == uid_s:
-                merged = _online_profile_from_player_data(local_pd)
-                for key, val in merged.items():
-                    if profile_obj.get(key) != val:
-                        profile_obj[key] = val
-                        changed = True
-
-        out = dict(profile_obj)
-
-    if changed:
-        _save_online_state()
-    return out
+    uid_num = _safe_int(uid_s, 1000001)
+    return database.ensure_profile(uid_num)
 
 
 def _online_update_profile(
@@ -1591,6 +1555,7 @@ _ROOM_STATE: dict[str, object] = {
     "battle_zone": 1,
     "map_id": 1,
     "mode_id": 0,
+    "bomb_carrier_uid": 0,
     "players": {},
     "snapshot_sent": False,
     "last_snapshot_push_ts": 0.0,
@@ -3929,6 +3894,12 @@ class Handler(SimpleHTTPRequestHandler):
             "vanguard_key1": getattr(self, "_vanguard_key1", ""),
             "append_utf8_log": getattr(self, "_append_utf8_log", None),
             "canonical_region_code": getattr(self, "_canonical_region_code", None),
+            "realm_host_for_client": self._realm_host_for_client,
+            "GAME_PORT": GAME_PORT,
+            "gp_bind_token_player": _gp_bind_token_player,
+            "holo_player_token_payload": _holo_player_token_payload,
+            "online_ensure_profile": _online_ensure_profile,
+            "resolve_player_id_from_request": self._resolve_player_id_from_request,
         }
         
         req_json_decoded = {}
@@ -4048,6 +4019,33 @@ class Handler(SimpleHTTPRequestHandler):
                 },
                 allow_range=False,
             )
+            return
+
+        if path_noslash.startswith("/log"):
+            import zlib
+            decomp_text = ""
+            if body:
+                gz_idx = body.find(b"\x1f\x8b\x08")
+                if gz_idx != -1:
+                    try:
+                        d = zlib.decompressobj(16 + zlib.MAX_WBITS)
+                        decomp_bytes = d.decompress(body[gz_idx:])
+                        decomp_text = decomp_bytes.decode("utf-8", errors="ignore")
+                    except Exception as e:
+                        decomp_text = f"<decomp error: {e}>"
+                if not decomp_text:
+                    try:
+                        decomp_text = body.decode("utf-8", errors="ignore")
+                    except Exception:
+                        pass
+            if decomp_text:
+                _append_utf8_log(f"[CLIENT_LOG] {path_noslash} ({len(decomp_text)}B):\n{decomp_text}")
+                try:
+                    with open("scratch/latest_client_log.txt", "a", encoding="utf-8") as fp:
+                        fp.write(f"\n=== LOG {path_noslash} ===\n" + decomp_text + "\n")
+                except Exception:
+                    pass
+            self._send_body(b"{\"code\":0}", status=200, content_type="application/json; charset=utf-8")
             return
 
         if is_gangplank_cfg_path and _allow_gangplank_config_host(host):
@@ -4496,6 +4494,12 @@ class Handler(SimpleHTTPRequestHandler):
             "vanguard_key1": getattr(self, "_vanguard_key1", ""),
             "append_utf8_log": getattr(self, "_append_utf8_log", None),
             "canonical_region_code": getattr(self, "_canonical_region_code", None),
+            "realm_host_for_client": self._realm_host_for_client,
+            "GAME_PORT": GAME_PORT,
+            "gp_bind_token_player": _gp_bind_token_player,
+            "holo_player_token_payload": _holo_player_token_payload,
+            "online_ensure_profile": _online_ensure_profile,
+            "resolve_player_id_from_request": self._resolve_player_id_from_request,
         }
         
         req_json_decoded = {}
@@ -4557,7 +4561,12 @@ def main():
         if sys.platform != "win32":
             return
         
-        rule_name = "Area F2 Server v3"
+        if _IS_TERMUX_FLAG:
+            rule_name = "Area F2 Server Termux v1"
+            tcp_ports = f"{HTTP_PORT},{PORT},8290,12000-13000,22000"
+        else:
+            rule_name = "Area F2 Server v3"
+            tcp_ports = "80,443,8290,12000-13000,22000"
         import subprocess
         try:
             res = subprocess.run(
@@ -4569,16 +4578,18 @@ def main():
         except Exception:
             pass
 
+        udp_ports = "12000-13000,22000"
         print(f"[BOOT] Windows Firewall rule '{rule_name}' is missing. Requesting Administrator privileges to add it...")
-        ps_script = (
-            f"New-NetFirewallRule -DisplayName '{rule_name} (TCP)' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 80,443,8290,12000-13000,22000 -ErrorAction SilentlyContinue; "
-            f"New-NetFirewallRule -DisplayName '{rule_name} (UDP)' -Direction Inbound -Action Allow -Protocol UDP -LocalPort 12000-13000,22000 -ErrorAction SilentlyContinue"
+        cmd_args = (
+            f'/c '
+            f'netsh advfirewall firewall add rule name="{rule_name} (TCP)" dir=in action=allow protocol=TCP localport={tcp_ports} profile=any & '
+            f'netsh advfirewall firewall add rule name="{rule_name} (UDP)" dir=in action=allow protocol=UDP localport={udp_ports} profile=any'
         )
         import ctypes
         try:
             # 0 = SW_HIDE
             ret = ctypes.windll.shell32.ShellExecuteW(
-                None, "runas", "powershell.exe", f"-WindowStyle Hidden -Command \"{ps_script}\"", None, 0
+                None, "runas", "cmd.exe", cmd_args, None, 0
             )
             if ret > 32:
                 print(f"[BOOT] Windows Firewall rules '{rule_name}' successfully requested (check UAC prompt).")
@@ -4671,14 +4682,25 @@ def main():
         _append_utf8_log(f"[BOOT] network route summary failed: {exc}")
 
     def _start_http():
+        global HTTP_PORT
         try:
             httpd_plain = ThreadingHTTPServer(("0.0.0.0", HTTP_PORT), PlainHTTPHandler)
-        except PermissionError as e:
-            msg = f"HTTP (plain) not started on port {HTTP_PORT}: {e}"
-            print(msg, file=sys.stderr)
-            _append_utf8_log(msg)
-            return
-        except OSError as e:
+        except (PermissionError, OSError) as e:
+            is_perm = isinstance(e, PermissionError) or getattr(e, "errno", None) in (13, 1)
+            if HTTP_PORT == 80 and is_perm:
+                HTTP_PORT = 8080
+                try:
+                    httpd_plain = ThreadingHTTPServer(("0.0.0.0", HTTP_PORT), PlainHTTPHandler)
+                    msg = f"HTTP  on http://0.0.0.0:{HTTP_PORT}/ (non-root fallback)"
+                    print(msg)
+                    _append_utf8_log(msg)
+                    httpd_plain.serve_forever()
+                    return
+                except Exception as e2:
+                    msg = f"HTTP fallback on port {HTTP_PORT} failed: {e2}"
+                    print(msg, file=sys.stderr)
+                    _append_utf8_log(msg)
+                    return
             msg = f"HTTP (plain) not started on port {HTTP_PORT}: {e}"
             print(msg, file=sys.stderr)
             _append_utf8_log(msg)
@@ -5422,15 +5444,6 @@ def main():
         _sub = _as_int(_sub_opts[0], _as_int(_character_meta.get("sub_skill"), 0)) if _sub_opts else _as_int(_character_meta.get("sub_skill"), 0)
         if _pri > 0 and _sec > 0 and _main > 0 and _sub > 0:
             _CHAR_DEFAULT_LOADOUTS[_character_id] = (_pri, _sec, _main, _sub)
-    for _cid, _defaults in {
-        1: (10036, 10074, 295, 299),
-        2: (10037, 10075, 296, 300),
-        3: (10038, 10076, 297, 301),
-        4: (10039, 10077, 295, 299),
-        5: (10040, 10078, 296, 300),
-        101: (10036, 10074, 295, 299),
-    }.items():
-        _CHAR_DEFAULT_LOADOUTS.setdefault(_cid, _defaults)
 
     _BUNDLE_ID_TO_CONTENT_IDS = _load_bundle_contents_from_lua_table(_BUNDLE_LUA_PATH)
 
@@ -6014,6 +6027,10 @@ def main():
     _TAG_RSP_CHOOSE_CHARACTER_CHARACTER_ID = _field_tag_or_default(_RSP_CHOOSE_CHARACTER_REQUEST_TAGS, "character_id", 1, "game.RspChooseCharacter.request")
     _TAG_RSP_CHOOSE_CHARACTER_PRIMARY_WEAPON_ID = _field_tag_or_default(_RSP_CHOOSE_CHARACTER_REQUEST_TAGS, "primary_weapon_id", 2, "game.RspChooseCharacter.request")
     _TAG_RSP_CHOOSE_CHARACTER_SKIN = _field_tag_or_default(_RSP_CHOOSE_CHARACTER_REQUEST_TAGS, "skin", 3, "game.RspChooseCharacter.request")
+
+    _TAG_REQ_BOMB_MODE_OPERATOR_BOMB_TYPE = 0
+    _TAG_RSP_BOMB_MODE_OPERATOR_BOMB_RESULT_TYPE = 0
+    _TAG_RSP_BOMB_MODE_OPERATOR_BOMB_RESULT_UID = 1
 
     _TAG_REQ_CHOOSE_WEAPON_KIND = _field_tag_or_default(_REQ_CHOOSE_WEAPON_REQUEST_TAGS, "kind", 0, "game.ReqChooseWeapon.request")
     _TAG_REQ_CHOOSE_WEAPON_ID = _field_tag_or_default(_REQ_CHOOSE_WEAPON_REQUEST_TAGS, "id", 1, "game.ReqChooseWeapon.request")
@@ -6865,6 +6882,27 @@ def main():
             (_TAG_STAT_VALUE, stat_value),
         ])
 
+    def _extract_attachment_id_and_kind(raw_item: object) -> tuple[int, int]:
+        if isinstance(raw_item, dict):
+            att_id = 0
+            att_kind = 0
+            for k in ("id", "attachment_id", _TAG_ATTACHMENT_ID, 0):
+                if k in raw_item:
+                    v = _as_int(raw_item[k], 0)
+                    if v > 0:
+                        att_id = v
+                        break
+            for k in ("kind", "attachment_kind", "kind_id", "type", _TAG_ATTACHMENT_KIND, 1):
+                if k in raw_item:
+                    v = _as_int(raw_item[k], 0)
+                    if v >= 0:
+                        att_kind = v
+                        break
+            return (max(0, att_id), max(0, att_kind))
+        elif isinstance(raw_item, int):
+            return (max(0, raw_item), 0)
+        return (0, 0)
+
     def _encode_game_attachment(attachment_id: int, attachment_kind: int) -> bytes:
         return _sproto_encode_fields([
             (_TAG_ATTACHMENT_ID, attachment_id),
@@ -6878,10 +6916,7 @@ def main():
             return b""
         payload = b""
         for raw_item in attachments[:64]:
-            if not isinstance(raw_item, dict):
-                continue
-            attachment_id = max(0, _as_int(raw_item.get("id"), 0))
-            attachment_kind = max(0, _as_int(raw_item.get("kind"), 0))
+            attachment_id, attachment_kind = _extract_attachment_id_and_kind(raw_item)
             encoded_item = _encode_game_attachment(attachment_id, attachment_kind)
             payload += _st.pack("<I", len(encoded_item)) + encoded_item
         return payload
@@ -7164,6 +7199,13 @@ def main():
             (_TAG_TEAM_MEMBER_POS, int(pos)),
             (_TAG_TEAM_MEMBER_INFO, info),
             (_TAG_TEAM_MEMBER_READY, bool(is_ready)),
+        ])
+
+    def _encode_team_match_confirm_player_info(uid: int, icon: int = 1, is_ready: bool = True) -> bytes:
+        return _sproto_encode_fields([
+            (0, int(uid)),
+            (1, int(icon)),
+            (2, bool(is_ready)),
         ])
 
     def _encode_team_data(
@@ -7555,10 +7597,7 @@ def main():
         parsed_items: list[dict[str, int]] = []
         seen_pairs: set[tuple[int, int]] = set()
         for raw_item in raw_items[:128]:
-            if not isinstance(raw_item, dict):
-                continue
-            attachment_id = max(0, _as_int(raw_item.get("id"), 0))
-            attachment_kind = max(0, _as_int(raw_item.get("kind"), 0))
+            attachment_id, attachment_kind = _extract_attachment_id_and_kind(raw_item)
             key = (attachment_kind, attachment_id)
             if key in seen_pairs:
                 continue
@@ -7600,7 +7639,7 @@ def main():
         if rid < 0 or rid == 999:
             return False
         if camp_id == 1:
-            return rid in (255, 0, 1, 2)
+            return rid in (255, 0, 1, 2, 6, 16, 26)
         if camp_id == 2:
             return rid in (0, 1, 2, 3)
         return rid >= 0
@@ -7900,7 +7939,7 @@ def main():
         "next_team_id": _int_env("DEFAULT_TEAM_ID", 1),
         "team_id": "",
         "battle_zone": _game_state.get("battle_zone", 1),
-        "combat_type": 0,
+        "combat_type": 1,
         "captain_uid": 0,
         "capacity": 5,
         "is_matching": False,
@@ -8110,6 +8149,8 @@ def main():
             else:
                 pd = _online_ensure_profile(self_uid)
             extra_pushes: list[tuple[bytes, str]] = []  # additional push frames
+            tag = f"sproto-type{msg_type}"
+            body = None
             pending_pushes = _TCPHandler._drain_pending_pushes(self_uid)
             if pending_pushes:
                 extra_pushes.extend(pending_pushes)
@@ -8192,8 +8233,12 @@ def main():
                             ],
                         )
                         extra_pushes.append((set_player_info_hint_push, "sproto-force-set-player-info-hint-hall-login"))
-                        print(_console_safe(f"[TCP] force_set_player_info_hint on hall_login uid={role_uid} name={role_name!r}"))
-                        _append_utf8_log(f"[TCP] force_set_player_info_hint on hall_login uid={role_uid} name={role_name!r}")
+                        log_auth = (
+                            f"[AUTH] TCP LOGIN | Input='{login_token}' ==> UID={role_uid} | "
+                            f"Profile='{role_name}' | Level={role_pd.get('level', 1)}"
+                        )
+                        print(_console_safe(log_auth))
+                        _append_utf8_log(log_auth)
                     except Exception as exc:
                         import traceback; traceback.print_exc()
                         _append_utf8_log(f"[TCP] force_set_player_info_hint hall_login failed: {exc}")
@@ -9966,6 +10011,9 @@ def main():
                     if kick_uid <= 0 or str(kick_uid) not in members:
                         errorcode = 3
                     else:
+                        target_entry = members.get(str(kick_uid), {})
+                        if req_kick_pos <= 0 and isinstance(target_entry, dict):
+                            req_kick_pos = max(1, _TCPHandler._sproto_read_int(target_entry.get("pos"), 1))
                         members.pop(str(kick_uid), None)
                         if not members:
                             _TCPHandler._team_reset()
@@ -9989,11 +10037,19 @@ def main():
                 if errorcode == 0:
                     kick_push = _TCPHandler._team_member_leave_push(leave_pos=req_kick_pos, leave_type=2, leave_uid=req_kick_uid)
                     extra_pushes.append(kick_push)
+                    # Queue push directly to the kicked member so their client clears the room
+                    _TCPHandler._queue_pending_push(req_kick_uid, kick_push)
+                    # Notify remaining team members
                     _TCPHandler._queue_team_pushes([kick_push])
                     sync_pushes = []
                     _TCPHandler._team_append_sync_pushes(sync_pushes)
                     extra_pushes.extend(sync_pushes)
                     _TCPHandler._queue_team_pushes(sync_pushes, exclude_uid=self_uid)
+                    try:
+                        import services.chat as chat_srv
+                        chat_srv.leave_room_chat_group(req_kick_uid, _team_state.get("team_id"))
+                    except Exception:
+                        pass
                 tag = "sproto-team-kick-resp"
 
             elif msg_type == 403:
@@ -10070,10 +10126,23 @@ def main():
                     ]),
                     "sproto-push-team-enter-match",
                 ))
-                _TCPHandler._queue_team_pushes(extra_pushes[-1:], exclude_uid=self_uid)
+                # Push match_success_notify (411) so the client transitions to MatchConfirmPanel without hanging
+                blue_p = _encode_team_match_confirm_player_info(self_uid, icon=1, is_ready=True)
+                orange_p = _encode_team_match_confirm_player_info(9900002, icon=1, is_ready=True)
+                blue_list = _TCPHandler._sproto_build_struct_list([blue_p])
+                orange_list = _TCPHandler._sproto_build_struct_list([orange_p])
+                extra_pushes.append((
+                    _sproto_build_push_frame(411, [
+                        (0, 15),          # timeout_second
+                        (1, blue_list),   # blue_players
+                        (2, orange_list), # orange_players
+                    ]),
+                    "sproto-push-match-success-notify",
+                ))
+                _TCPHandler._queue_team_pushes(extra_pushes[-2:], exclude_uid=self_uid)
                 tag = "sproto-team-join-match-resp"
                 _append_utf8_log(
-                    f"[TCP] team_join_match accepted start_ts={start_ts} eta={estimated_time}"
+                    f"[TCP] team_join_match accepted start_ts={start_ts} eta={estimated_time}, pushed match_success"
                 )
 
             elif msg_type == 410:
@@ -10100,6 +10169,7 @@ def main():
                 # team_match_confirm_req
                 _TCPHandler._log_sproto_qc(msg_type, "team.match_confirm_req.request", req_body, set())
                 self_uid = self._session_uid(pd)
+                _team_state["is_matching"] = False
                 body = None
                 extra_pushes.append((
                     _sproto_build_push_frame(413, [
@@ -10108,8 +10178,9 @@ def main():
                     "sproto-push-match-confirm-notify",
                 ))
                 _TCPHandler._queue_team_pushes(extra_pushes[-1:], exclude_uid=self_uid)
+                _TCPHandler._check_and_launch_room_battle(extra_pushes)
                 tag = "sproto-team-match-confirm-resp"
-                _append_utf8_log(f"[TCP] team_match_confirm accepted uid={self_uid}")
+                _append_utf8_log(f"[TCP] team_match_confirm accepted uid={self_uid}, launching match")
 
             elif msg_type == 419:
                 # team_chat_enter_team_req
@@ -11387,7 +11458,7 @@ def main():
                 else:
                     player_camp = max(1, _TCPHandler._sproto_read_int(_game_state.get("camp"), 1))
 
-                player_gs = dict(_game_state)
+                player_gs = copy.deepcopy(_game_state)  # deep copy: weapon/skill dicts must not be shared across players
                 player_gs["camp"] = player_camp
                 player_gs["character_id"] = char_id
                 body, selected_char_id = _TCPHandler._build_choose_character_response_body(
@@ -11435,7 +11506,7 @@ def main():
                             other_pd = _online_ensure_profile(p_uid)
                             other_p_entry = _room_state["players"][str(p_uid)]
                             other_camp = max(1, _safe_int(other_p_entry.get("camp"), 1))
-                            other_gs = dict(_game_state)
+                            other_gs = copy.deepcopy(_game_state)  # deep copy: must not share weapon refs with _game_state
                             other_gs["camp"] = other_camp
                             if other_p_entry.get("character_id"):
                                 other_gs["character_id"] = other_p_entry["character_id"]
@@ -11566,7 +11637,7 @@ def main():
                 is_room = _TCPHandler._room_is_active() and str(self_uid) in _room_state.get("players", {})
                 p_entry = _room_state["players"][str(self_uid)] if is_room else None
 
-                gs = dict(_game_state) if not is_room else _room_state["players"][str(self_uid)]
+                gs = copy.deepcopy(_game_state) if not is_room else _room_state["players"][str(self_uid)]  # deep copy: weapon dicts must not be shared
                 pd = player_pd
                 kind = _TCPHandler._sproto_read_int(req_body.get(_TAG_REQ_CHOOSE_WEAPON_KIND), 0)   # 0=primary,1=secondary,2=main_skill,3=sub_skill
                 wid = _TCPHandler._sproto_read_int(req_body.get(_TAG_REQ_CHOOSE_WEAPON_ID), 0)
@@ -11686,11 +11757,6 @@ def main():
                     pd,
                     tag="sproto-push-pre-battle-info-weapon",
                 )
-                if is_room:
-                    for p_uid_s in _room_state.get("players", {}).keys():
-                        p_uid = _safe_int(p_uid_s, 0)
-                        if p_uid > 0 and p_uid != self_uid:
-                            _TCPHandler._queue_pending_push(p_uid, choose_weapon_push)
 
             elif msg_type == 1015:
                 # game_ReqEnterPreBattleStage -> response: uid, success, stage
@@ -11702,8 +11768,20 @@ def main():
                 else:
                     player_camp = max(1, _safe_int(_game_state.get("camp"), 1))
 
-                player_gs = dict(_game_state)
+                player_gs = copy.deepcopy(_game_state)  # deep copy: weapon/skill dicts must not be shared across players
                 player_gs["camp"] = player_camp
+                if str(self_uid) in _room_state.get("players", {}):
+                    p_entry = _room_state["players"][str(self_uid)]
+                    if p_entry.get("primary_weapon"):
+                        player_gs["primary_weapon"] = copy.deepcopy(p_entry["primary_weapon"])
+                    if p_entry.get("secondary_weapon"):
+                        player_gs["secondary_weapon"] = copy.deepcopy(p_entry["secondary_weapon"])
+                    if p_entry.get("main_skill_id"):
+                        player_gs["main_skill_id"] = p_entry["main_skill_id"]
+                    if p_entry.get("sub_skill_id"):
+                        player_gs["sub_skill_id"] = p_entry["sub_skill_id"]
+                    if p_entry.get("character_id"):
+                        player_gs["character_id"] = p_entry["character_id"]
                 prebattle_was_started = bool(_game_state.get("prebattle_room_started", False))
                 req_stage = _TCPHandler._sproto_read_int(
                     req_body.get(_TAG_REQ_ENTER_PRE_BATTLE_STAGE_STAGE),
@@ -11783,7 +11861,7 @@ def main():
                 is_room = _TCPHandler._room_is_active() and str(self_uid) in _room_state.get("players", {})
                 p_entry = _room_state["players"][str(self_uid)] if is_room else None
 
-                gs = dict(_game_state) if not is_room else _room_state["players"][str(self_uid)]
+                gs = copy.deepcopy(_game_state) if not is_room else _room_state["players"][str(self_uid)]  # deep copy: weapon dicts must not be shared
                 prebattle_was_started = bool(_game_state.get("prebattle_room_started", False))
                 _TCPHandler._log_sproto_qc(msg_type, "game.ReqChooseSpawnRegionConfirm.request", req_body, {
                     _TAG_REQ_CHOOSE_SPAWN_REGION_CONFIRM_REGION_ID,
@@ -11865,12 +11943,88 @@ def main():
                         if p_uid > 0 and p_uid != self_uid:
                             _TCPHandler._queue_pending_push(p_uid, region_push)
 
+            elif msg_type == 1070:
+                # game.ReqBombModeOperatorBomb (tag 1070): pick up / drop bomb in PreBattle
+                # operator_type: 0 = pick up, 1 = drop
+                self_uid = self._session_uid()
+                op_type = _TCPHandler._sproto_read_int(
+                    req_body.get(_TAG_REQ_BOMB_MODE_OPERATOR_BOMB_TYPE, req_body.get("operator_type", 0)),
+                    0,
+                )
+                is_room = _TCPHandler._room_is_active() and str(self_uid) in _room_state.get("players", {})
+                p_entry = _room_state["players"][str(self_uid)] if is_room else None
+                camp = max(1, _safe_int(p_entry.get("camp", 1) if p_entry else _game_state.get("camp", 1), 1))
+
+                # Bomb operation is only allowed for Attackers (camp 1)
+                if camp != 1:
+                    _log_line = f"[TCP] ReqBombModeOperatorBomb: rejected for non-attacker uid={self_uid} camp={camp}"
+                    print(_console_safe(_log_line)); _append_utf8_log(_log_line)
+                    fail_push = (_sproto_build_push_frame(1071, []), "sproto-push-bomb-operator-failed")
+                    extra_pushes.append(fail_push)
+                else:
+                    cur_carrier = _room_state.get("bomb_carrier_uid", 0) if is_room else _game_state.get("bomb_carrier_uid", 0)
+                    if op_type == 0:
+                        # Pick up bomb
+                        if cur_carrier and cur_carrier != self_uid:
+                            _log_line = f"[TCP] ReqBombModeOperatorBomb: already held by uid={cur_carrier}, uid={self_uid} cannot pick up"
+                            print(_console_safe(_log_line)); _append_utf8_log(_log_line)
+                            fail_push = (_sproto_build_push_frame(1071, []), "sproto-push-bomb-operator-failed")
+                            extra_pushes.append(fail_push)
+                        else:
+                            if is_room:
+                                _room_state["bomb_carrier_uid"] = self_uid
+                                for p_k, p_v in _room_state.get("players", {}).items():
+                                    if isinstance(p_v, dict):
+                                        p_v["is_have_defuser"] = (_safe_int(p_v.get("uid")) == self_uid)
+                            _game_state["bomb_carrier_uid"] = self_uid
+                            _game_state["is_have_defuser"] = (self_uid == _safe_int(_player_data.get("uid")))
+
+                            _log_line = f"[TCP] ReqBombModeOperatorBomb: uid={self_uid} picked up bomb"
+                            print(_console_safe(_log_line)); _append_utf8_log(_log_line)
+
+                            result_body = [
+                                (_TAG_RSP_BOMB_MODE_OPERATOR_BOMB_RESULT_TYPE, 0),
+                                (_TAG_RSP_BOMB_MODE_OPERATOR_BOMB_RESULT_UID, self_uid),
+                            ]
+                            res_push = (_sproto_build_push_frame(1072, result_body), "sproto-push-bomb-operator-result")
+                            extra_pushes.append(res_push)
+                            if is_room:
+                                for other_uid_s in _room_state.get("players", {}).keys():
+                                    other_uid = _safe_int(other_uid_s, 0)
+                                    if other_uid > 0 and other_uid != self_uid:
+                                        _TCPHandler._queue_pending_push(other_uid, res_push)
+                    elif op_type == 1:
+                        # Drop bomb
+                        if is_room:
+                            _room_state["bomb_carrier_uid"] = 0
+                            for p_k, p_v in _room_state.get("players", {}).items():
+                                if isinstance(p_v, dict):
+                                    p_v["is_have_defuser"] = False
+                        _game_state["bomb_carrier_uid"] = 0
+                        _game_state["is_have_defuser"] = False
+
+                        _log_line = f"[TCP] ReqBombModeOperatorBomb: uid={self_uid} dropped bomb"
+                        print(_console_safe(_log_line)); _append_utf8_log(_log_line)
+
+                        result_body = [
+                            (_TAG_RSP_BOMB_MODE_OPERATOR_BOMB_RESULT_TYPE, 1),
+                            (_TAG_RSP_BOMB_MODE_OPERATOR_BOMB_RESULT_UID, self_uid),
+                        ]
+                        res_push = (_sproto_build_push_frame(1072, result_body), "sproto-push-bomb-operator-result")
+                        extra_pushes.append(res_push)
+                        if is_room:
+                            for other_uid_s in _room_state.get("players", {}).keys():
+                                other_uid = _safe_int(other_uid_s, 0)
+                                if other_uid > 0 and other_uid != self_uid:
+                                    _TCPHandler._queue_pending_push(other_uid, res_push)
+                tag = "sproto-bomb-operator-resp"
+
             elif msg_type == 1043:
                 # game_ReqPreBattleInfo -> respond with current selection
                 self_uid = self._session_uid()
                 player_pd = _online_ensure_profile(self_uid)
                 player_camp = 1
-                player_gs = dict(_game_state)
+                player_gs = copy.deepcopy(_game_state)  # deep copy: weapon/skill dicts must not be shared across players
                 if _TCPHandler._room_is_active() and str(self_uid) in _room_state.get("players", {}):
                     p_entry = _room_state["players"][str(self_uid)]
                     player_camp = max(1, _safe_int(p_entry.get("camp"), 1))
@@ -11927,6 +12081,49 @@ def main():
                     if _TCPHandler._room_is_active() and str(self_uid) in _room_state.get("players", {}):
                         _room_state["players"][str(self_uid)]["prebattle_stage"] = 4
                         _room_state["players"][str(self_uid)]["is_ready"] = True
+
+                        body_stage = [
+                            (_TAG_RSP_ENTER_PRE_BATTLE_STAGE_UID, self_uid),
+                            (_TAG_RSP_ENTER_PRE_BATTLE_STAGE_SUCCESS, True),
+                            (_TAG_RSP_ENTER_PRE_BATTLE_STAGE_STAGE, 4),
+                        ]
+                        stage_push = (_sproto_build_push_frame(1016, body_stage), "sproto-push-enter-pre-battle-stage")
+                        if session == 0:
+                            extra_pushes.append(stage_push)
+
+                        # Broadcast stage 4 and updated PreBattleInfo to all other players in room
+                        for p_uid_s in _room_state.get("players", {}).keys():
+                            p_uid = _safe_int(p_uid_s, 0)
+                            if p_uid > 0 and p_uid != self_uid:
+                                _TCPHandler._queue_pending_push(p_uid, stage_push)
+                                other_pd = _online_ensure_profile(p_uid)
+                                other_p_entry = _room_state["players"][str(p_uid)]
+                                other_camp = max(1, _safe_int(other_p_entry.get("camp"), 1))
+                                other_gs = dict(_game_state)
+                                other_gs["camp"] = other_camp
+                                if other_p_entry.get("character_id"):
+                                    other_gs["character_id"] = other_p_entry["character_id"]
+                                if other_p_entry.get("primary_weapon"):
+                                    other_gs["primary_weapon"] = other_p_entry["primary_weapon"]
+                                if other_p_entry.get("secondary_weapon"):
+                                    other_gs["secondary_weapon"] = other_p_entry["secondary_weapon"]
+                                if other_p_entry.get("main_skill_id"):
+                                    other_gs["main_skill_id"] = other_p_entry["main_skill_id"]
+                                if other_p_entry.get("sub_skill_id"):
+                                    other_gs["sub_skill_id"] = other_p_entry["sub_skill_id"]
+                                if other_p_entry.get("region_id"):
+                                    other_gs["region_id"] = other_p_entry["region_id"]
+                                    other_gs["spawn_region_id"] = other_p_entry["region_id"]
+                                other_pushes: list[tuple[bytes, str]] = []
+                                _TCPHandler._append_prebattle_info_push(
+                                    other_pushes,
+                                    other_gs,
+                                    other_pd,
+                                    tag="sproto-push-pre-battle-info-stage-notify",
+                                    ensure_choose_character_push=False,
+                                )
+                                _TCPHandler._queue_pending_pushes(p_uid, other_pushes)
+
                     _TCPHandler._check_and_launch_room_battle(extra_pushes)
 
                 body = None
@@ -13209,7 +13406,20 @@ def main():
         def _apply_character_defaults(gs: dict, character_id: object, *, force: bool = False) -> None:
             if not isinstance(gs, dict):
                 return
-            defaults = _TCPHandler._character_default_loadout(character_id)
+            cid = _TCPHandler._sproto_read_int(character_id, 0)
+            defaults = _TCPHandler._character_default_loadout(cid)
+            meta = _CHARACTER_META_BY_ID.get(cid)
+            if isinstance(meta, dict):
+                pri_list = meta.get("primary_weapons") or [defaults[0]]
+                sec_list = meta.get("secondary_weapons") or [defaults[1]]
+                main_list = meta.get("main_skills") or [defaults[2]]
+                sub_list = meta.get("sub_skills") or [defaults[3]]
+            else:
+                pri_list = [defaults[0]]
+                sec_list = [defaults[1]]
+                main_list = [defaults[2]]
+                sub_list = [defaults[3]]
+
             primary = gs.get("primary_weapon")
             secondary = gs.get("secondary_weapon")
             current_primary = _TCPHandler._sproto_read_int(
@@ -13222,18 +13432,36 @@ def main():
             )
             current_main_skill = _TCPHandler._sproto_read_int(gs.get("main_skill_id"), 0)
             current_sub_skill = _TCPHandler._sproto_read_int(gs.get("sub_skill_id"), 0)
-            need_defaults = force or (
-                current_primary <= 0
-                or current_secondary <= 0
-                or current_main_skill <= 0
-                or current_sub_skill <= 0
-            )
-            if not need_defaults:
-                return
-            gs["primary_weapon"] = {"id": defaults[0], "skin": 0, "attachments": []}
-            gs["secondary_weapon"] = {"id": defaults[1], "skin": 0, "attachments": []}
-            gs["main_skill_id"] = defaults[2]
-            gs["sub_skill_id"] = defaults[3]
+
+            if current_primary in pri_list and isinstance(primary, dict):
+                existing_atts = _TCPHandler._normalize_attachment_list(primary.get("attachments"))
+                gs["primary_weapon"] = {
+                    "id": current_primary,
+                    "skin": _TCPHandler._sproto_read_int(primary.get("skin"), 0),
+                    "attachments": existing_atts,
+                }
+            else:
+                gs["primary_weapon"] = {"id": pri_list[0], "skin": 0, "attachments": []}
+
+            if current_secondary in sec_list and isinstance(secondary, dict):
+                existing_atts_sec = _TCPHandler._normalize_attachment_list(secondary.get("attachments"))
+                gs["secondary_weapon"] = {
+                    "id": current_secondary,
+                    "skin": _TCPHandler._sproto_read_int(secondary.get("skin"), 0),
+                    "attachments": existing_atts_sec,
+                }
+            else:
+                gs["secondary_weapon"] = {"id": sec_list[0], "skin": 0, "attachments": []}
+
+            if current_main_skill in main_list:
+                gs["main_skill_id"] = current_main_skill
+            else:
+                gs["main_skill_id"] = main_list[0]
+
+            if current_sub_skill in sub_list:
+                gs["sub_skill_id"] = current_sub_skill
+            else:
+                gs["sub_skill_id"] = sub_list[0]
 
         @staticmethod
         def _ensure_character_selection_for_camp(
@@ -13370,25 +13598,7 @@ def main():
 
             seen_pairs: set[tuple[int, int]] = set()
             for raw_item in raw_items[:128]:
-                attachment_id = 0
-                attachment_kind = 0
-                if isinstance(raw_item, dict):
-                    if any(isinstance(key, int) for key in raw_item.keys()):
-                        attachment_id = _TCPHandler._sproto_read_int(
-                            raw_item.get(_TAG_ATTACHMENT_ID), 0
-                        )
-                        attachment_kind = _TCPHandler._sproto_read_int(
-                            raw_item.get(_TAG_ATTACHMENT_KIND), 0
-                        )
-                    else:
-                        attachment_id = _TCPHandler._sproto_read_int(raw_item.get("id"), 0)
-                        attachment_kind = _TCPHandler._sproto_read_int(raw_item.get("kind"), 0)
-                elif isinstance(raw_item, int):
-                    attachment_id = _TCPHandler._sproto_read_int(raw_item, 0)
-                    attachment_kind = 0
-
-                attachment_id = max(0, attachment_id)
-                attachment_kind = max(0, attachment_kind)
+                attachment_id, attachment_kind = _extract_attachment_id_and_kind(raw_item)
                 key = (attachment_kind, attachment_id)
                 if key in seen_pairs:
                     continue
@@ -13406,9 +13616,8 @@ def main():
             if not isinstance(attachments, list):
                 return False
             for item in attachments:
-                if not isinstance(item, dict):
-                    continue
-                if _TCPHandler._sproto_read_int(item.get("id"), 0) > 0:
+                att_id, _ = _extract_attachment_id_and_kind(item)
+                if att_id > 0:
                     return True
             return False
 
@@ -13453,6 +13662,7 @@ def main():
             _room_state["room_id"] = 0
             _room_state["owner_uid"] = 0
             _room_state["players"] = {}
+            _room_state["bomb_carrier_uid"] = 0
             _room_state["snapshot_sent"] = False
             _room_state["last_snapshot_push_ts"] = 0.0
 
@@ -13512,7 +13722,8 @@ def main():
             # ALL players are ready!
             if not bool(_room_state.get("battle_launched", False)):
                 _room_state["battle_launched"] = True
-                _game_state["battle_id"] += 1
+                if not bool(_game_state.get("in_battle", False)):
+                    _game_state["battle_id"] += 1
                 _game_state["_confirm_sent"] = True
                 _game_state["_confirm_pending"] = False
                 _game_state["_last_confirm_push_ts"] = time.time()
@@ -13524,14 +13735,17 @@ def main():
                 )
                 print(_console_safe(_log_line)); _append_utf8_log(_log_line)
 
-                # Send customized battle_info to every room participant
-                for p_uid_s, p_entry in room_players.items():
-                    p_uid = _safe_int(p_entry.get("uid"), 0)
-                    if p_uid <= 0:
-                        continue
-                    p_pd = _online_ensure_profile(p_uid)
-                    b_push = _TCPHandler._build_battle_info_push(_game_state, target_pd=p_pd)
-                    _TCPHandler._queue_pending_push(p_uid, (b_push, "sproto-push-battle-info"))
+                # Send customized battle_info to every room participant only if initial launch (not in battle).
+                # For Round 2+, clients are already connected to battle_server TCP; sending 1029 triggers
+                # TRY_TO_CONNECT_TO_BATTLE_SERVER in client Lua, creating race conditions with RspRoomLoading (0x3EE).
+                if not bool(_game_state.get("in_battle", False)):
+                    for p_uid_s, p_entry in room_players.items():
+                        p_uid = _safe_int(p_entry.get("uid"), 0)
+                        if p_uid <= 0:
+                            continue
+                        p_pd = _online_ensure_profile(p_uid)
+                        b_push = _TCPHandler._build_battle_info_push(_game_state, target_pd=p_pd)
+                        _TCPHandler._queue_pending_push(p_uid, (b_push, "sproto-push-battle-info"))
 
                 return True
 
@@ -14992,9 +15206,19 @@ def main():
             target_camp = max(1, _safe_int(_room_state.get("players", {}).get(str(target_uid), {}).get("camp"), gs.get("camp", 1)))
             local_gs = dict(gs)
             local_gs["camp"] = target_camp
-            preferred_cid = 0
             if target_uid > 0 and str(target_uid) in _room_state.get("players", {}):
-                preferred_cid = _safe_int(_room_state["players"][str(target_uid)].get("character_id"), 0)
+                p_entry = _room_state["players"][str(target_uid)]
+                if p_entry.get("character_id"):
+                    local_gs["character_id"] = p_entry["character_id"]
+                if p_entry.get("primary_weapon"):
+                    local_gs["primary_weapon"] = copy.deepcopy(p_entry["primary_weapon"])
+                if p_entry.get("secondary_weapon"):
+                    local_gs["secondary_weapon"] = copy.deepcopy(p_entry["secondary_weapon"])
+                if p_entry.get("main_skill_id"):
+                    local_gs["main_skill_id"] = p_entry["main_skill_id"]
+                if p_entry.get("sub_skill_id"):
+                    local_gs["sub_skill_id"] = p_entry["sub_skill_id"]
+            preferred_cid = _safe_int(local_gs.get("character_id"), 0)
             if preferred_cid <= 0:
                 preferred_cid = 1 if target_camp == 1 else 101
             local_gs["character_id"] = preferred_cid
@@ -15060,10 +15284,21 @@ def main():
                 )
             if str(target_uid) in _room_state.get("players", {}):
                 t_entry = _room_state["players"][str(target_uid)]
-                primary_weapon = t_entry.get("primary_weapon") or gs.get("primary_weapon")
-                secondary_weapon = t_entry.get("secondary_weapon") or gs.get("secondary_weapon")
-                main_skill_id_val = t_entry.get("main_skill_id") or gs.get("main_skill_id")
-                sub_skill_id_val = t_entry.get("sub_skill_id") or gs.get("sub_skill_id")
+                # Use per-player room entry first; fall back to per-player default
+                # loadout, NOT gs (which may carry another player's weapons).
+                _d_pri, _d_sec, _d_main, _d_sub = _TCPHandler._character_default_loadout(character_id)
+                primary_weapon = (
+                    copy.deepcopy(t_entry.get("primary_weapon")) or
+                    gs.get("primary_weapon") or
+                    {"id": _d_pri, "skin": 0, "attachments": []}
+                )
+                secondary_weapon = (
+                    copy.deepcopy(t_entry.get("secondary_weapon")) or
+                    gs.get("secondary_weapon") or
+                    {"id": _d_sec, "skin": 0, "attachments": []}
+                )
+                main_skill_id_val = t_entry.get("main_skill_id") or gs.get("main_skill_id") or _d_main
+                sub_skill_id_val = t_entry.get("sub_skill_id") or gs.get("sub_skill_id") or _d_sub
             else:
                 primary_weapon = gs.get("primary_weapon")
                 secondary_weapon = gs.get("secondary_weapon")
@@ -15092,7 +15327,7 @@ def main():
                     p_camp = max(1, _safe_int(p_entry.get("camp"), 1))
                     if p_camp == target_camp:
                         p_char_id = _safe_int(p_entry.get("character_id"), character_id if p_uid == target_uid else (1 if p_camp == 1 else 101))
-                        p_stage = stage
+                        p_stage = _safe_int(p_entry.get("prebattle_stage"), stage)
                         user_data_entries.append(_encode_game_prebattle_user_data(
                             p_uid,
                             p_char_id,
@@ -15173,15 +15408,18 @@ def main():
             pd = target_pd if isinstance(target_pd, dict) else _player_data
             round_id = max(1, _TCPHandler._sproto_read_int(gs.get("round"), 1))
             is_custom_room = bool(_room_state.get("room_id")) or bool(_TCPHandler._room_is_active())
-            default_mode = 4 if is_custom_room else 3
+            is_match = bool(_team_state.get("is_matching")) or (_TCPHandler._sproto_read_int(_team_state.get("combat_type"), 0) == 1)
+            default_mode = 4 if (is_custom_room or is_match) else 3
             mode_id = _TCPHandler._sproto_read_int(gs.get("mode_id"), default_mode)
-            if mode_id <= 0 or (is_custom_room and mode_id == 3):
-                mode_id = 4 if is_custom_room else 3
+            if mode_id <= 0 or ((is_custom_room or is_match) and mode_id == 3):
+                mode_id = 4 if (is_custom_room or is_match) else 3
                 gs["mode_id"] = mode_id
             if is_custom_room:
                 combat_type = 4  # CombatType.room_mode
+            elif mode_id == 3 and not is_match:
+                combat_type = 6  # CombatType.train_mode
             else:
-                combat_type = 6 if mode_id == 3 else 4
+                combat_type = 1  # CombatType.normal_mode
             wait_time = max(0, _TCPHandler._sproto_read_int(gs.get("wait_time"), 300))
             map_id = max(1, _TCPHandler._sproto_read_int(gs.get("map_id"), 1))
             my_bid = _TCPHandler._sproto_read_int(gs.get("player_bid"), 1)
@@ -15197,17 +15435,29 @@ def main():
 
             my_team_id = 2 if camp == 2 else 1
             other_team_id = 2 if my_team_id == 1 else 1
-            spawn_region_id = _TCPHandler._resolve_spawn_region(gs, gs.get("spawn_region_id"))
-            region_id = _TCPHandler._resolve_spawn_region(gs, gs.get("region_id", spawn_region_id))
-            if region_id != spawn_region_id:
-                region_id = spawn_region_id
             local_gs = dict(gs)
             local_gs["camp"] = camp
-            preferred_cid = None
             if target_uid > 0 and str(target_uid) in _room_state.get("players", {}):
-                stored_cid = _safe_int(_room_state["players"][str(target_uid)].get("character_id"), 0)
-                if stored_cid > 0:
-                    preferred_cid = stored_cid
+                p_entry_self = _room_state["players"][str(target_uid)]
+                if p_entry_self.get("character_id"):
+                    local_gs["character_id"] = p_entry_self["character_id"]
+                if p_entry_self.get("primary_weapon"):
+                    local_gs["primary_weapon"] = copy.deepcopy(p_entry_self["primary_weapon"])
+                if p_entry_self.get("secondary_weapon"):
+                    local_gs["secondary_weapon"] = copy.deepcopy(p_entry_self["secondary_weapon"])
+                if p_entry_self.get("main_skill_id"):
+                    local_gs["main_skill_id"] = p_entry_self["main_skill_id"]
+                if p_entry_self.get("sub_skill_id"):
+                    local_gs["sub_skill_id"] = p_entry_self["sub_skill_id"]
+                if p_entry_self.get("spawn_region_id") is not None:
+                    local_gs["spawn_region_id"] = p_entry_self["spawn_region_id"]
+                if p_entry_self.get("region_id") is not None:
+                    local_gs["region_id"] = p_entry_self["region_id"]
+            spawn_region_id = _TCPHandler._resolve_spawn_region(local_gs, local_gs.get("spawn_region_id"))
+            region_id = _TCPHandler._resolve_spawn_region(local_gs, local_gs.get("region_id", spawn_region_id))
+            if region_id != spawn_region_id:
+                region_id = spawn_region_id
+            preferred_cid = _safe_int(local_gs.get("character_id"), 0)
             selected_character_id = _TCPHandler._ensure_character_selection_for_camp(
                 local_gs,
                 preferred_character_id=preferred_cid,
@@ -15233,19 +15483,40 @@ def main():
                         continue
                     p_camp = max(1, _safe_int(p_entry.get("camp"), 1))
                     p_name = _sanitize_display_name(p_entry.get("name"), f"Player{p_uid}")
+                    p_reg_val = p_entry.get("spawn_region_id", p_entry.get("region_id"))
+                    p_reg = _TCPHandler._resolve_spawn_region({"camp": p_camp}, p_reg_val)
                     p_struct = _encode_game_character_choose_player(
                         p_uid,
                         bid_counter,
                         p_name,
-                        region_id,
+                        p_reg,
                     )
                     if p_camp == camp:
                         my_team_entries.append(p_struct)
                     else:
                         other_team_entries.append(p_struct)
-                my_team = _encode_game_battle_team_info(my_team_id, camp, 0, _TCPHandler._sproto_build_struct_list(my_team_entries))
-                other_team = _encode_game_battle_team_info(other_team_id, 2 if camp == 1 else 1, 0, _TCPHandler._sproto_build_struct_list(other_team_entries))
+                if not other_team_entries and mode_id != 3:
+                    opp_bid = 6 if my_bid <= 5 else 1
+                    opp_uid = 9900002 if camp == 1 else 9900001
+                    opp_reg = _TCPHandler._resolve_spawn_region({"camp": 2 if camp == 1 else 1}, None)
+                    opp_player = _encode_game_character_choose_player(
+                        opp_uid,
+                        opp_bid,
+                        "Opponent",
+                        opp_reg,
+                    )
+                    other_team_entries.append(opp_player)
+                att_score = _TCPHandler._sproto_read_int(gs.get("attacker_score"), 0)
+                def_score = _TCPHandler._sproto_read_int(gs.get("defender_score"), 0)
+                my_win_times = att_score if camp == 1 else def_score
+                other_win_times = def_score if camp == 1 else att_score
+                my_team = _encode_game_battle_team_info(my_team_id, camp, my_win_times, _TCPHandler._sproto_build_struct_list(my_team_entries))
+                other_team = _encode_game_battle_team_info(other_team_id, 2 if camp == 1 else 1, other_win_times, _TCPHandler._sproto_build_struct_list(other_team_entries))
             else:
+                att_score = _TCPHandler._sproto_read_int(gs.get("attacker_score"), 0)
+                def_score = _TCPHandler._sproto_read_int(gs.get("defender_score"), 0)
+                my_win_times = att_score if camp == 1 else def_score
+                other_win_times = def_score if camp == 1 else att_score
                 player = _encode_game_character_choose_player(
                     pd["uid"],
                     my_bid,
@@ -15253,8 +15524,21 @@ def main():
                     region_id,
                 )
                 player_list = _TCPHandler._sproto_build_struct_list([player])
-                my_team = _encode_game_battle_team_info(my_team_id, camp, 0, player_list)
-                other_team = _encode_game_battle_team_info(other_team_id, 2 if camp == 1 else 1, 0, b"")
+                my_team = _encode_game_battle_team_info(my_team_id, camp, my_win_times, player_list)
+                if mode_id != 3:
+                    opp_bid = 6 if my_bid <= 5 else 1
+                    opp_uid = 9900002 if camp == 1 else 9900001
+                    opp_reg = _TCPHandler._resolve_spawn_region({"camp": 2 if camp == 1 else 1}, None)
+                    opp_player = _encode_game_character_choose_player(
+                        opp_uid,
+                        opp_bid,
+                        "Opponent",
+                        opp_reg,
+                    )
+                    other_player_list = _TCPHandler._sproto_build_struct_list([opp_player])
+                else:
+                    other_player_list = b""
+                other_team = _encode_game_battle_team_info(other_team_id, 2 if camp == 1 else 1, other_win_times, other_player_list)
 
             unlocked_ids = _TCPHandler._collect_unlocked_character_ids(camp=camp)
             unlocked_ids = [
@@ -15366,16 +15650,26 @@ def main():
 
             my_team_id = 2 if camp == 2 else 1
             is_custom_room = bool(_room_state.get("room_id")) or bool(_TCPHandler._room_is_active())
-            mode_id = _TCPHandler._sproto_read_int(gs.get("mode_id"), 4 if is_custom_room else 3)
-            if is_custom_room and mode_id in (0, 3):
+            is_match = bool(_team_state.get("is_matching")) or (_TCPHandler._sproto_read_int(_team_state.get("combat_type"), 0) == 1)
+            default_mode = 4 if (is_custom_room or is_match) else 3
+            mode_id = _TCPHandler._sproto_read_int(gs.get("mode_id"), default_mode)
+            if (is_custom_room or is_match) and mode_id in (0, 3):
                 mode_id = 4
                 gs["mode_id"] = 4
             elif mode_id <= 0:
-                mode_id = 4 if is_custom_room else 3
+                mode_id = 4 if (is_custom_room or is_match) else 3
                 gs["mode_id"] = mode_id
             other_team_id = 2 if my_team_id == 1 else 1
-            spawn_region_id = _TCPHandler._resolve_spawn_region(gs, gs.get("spawn_region_id"))
-            region_id = _TCPHandler._resolve_spawn_region(gs, gs.get("region_id", spawn_region_id))
+            local_gs = dict(gs)
+            local_gs["camp"] = camp
+            if target_uid > 0 and str(target_uid) in _room_state.get("players", {}):
+                p_entry_self = _room_state["players"][str(target_uid)]
+                if p_entry_self.get("spawn_region_id") is not None:
+                    local_gs["spawn_region_id"] = p_entry_self["spawn_region_id"]
+                if p_entry_self.get("region_id") is not None:
+                    local_gs["region_id"] = p_entry_self["region_id"]
+            spawn_region_id = _TCPHandler._resolve_spawn_region(local_gs, local_gs.get("spawn_region_id"))
+            region_id = _TCPHandler._resolve_spawn_region(local_gs, local_gs.get("region_id", spawn_region_id))
             if region_id != spawn_region_id:
                 region_id = spawn_region_id
 
@@ -15397,19 +15691,29 @@ def main():
                         continue
                     p_camp = max(1, _safe_int(p_entry.get("camp"), 1))
                     p_name = _sanitize_display_name(p_entry.get("name"), f"Player{p_uid}")
+                    p_reg_val = p_entry.get("spawn_region_id", p_entry.get("region_id"))
+                    p_reg = _TCPHandler._resolve_spawn_region({"camp": p_camp}, p_reg_val)
                     p_struct = _encode_game_character_choose_player(
                         p_uid,
                         bid_counter,
                         p_name,
-                        region_id,
+                        p_reg,
                     )
                     if p_camp == camp:
                         my_team_entries.append(p_struct)
                     else:
                         other_team_entries.append(p_struct)
-                my_team = _encode_game_battle_team_info(my_team_id, camp, 0, _TCPHandler._sproto_build_struct_list(my_team_entries))
-                other_team = _encode_game_battle_team_info(other_team_id, 2 if camp == 1 else 1, 0, _TCPHandler._sproto_build_struct_list(other_team_entries))
+                att_score = _TCPHandler._sproto_read_int(gs.get("attacker_score"), 0)
+                def_score = _TCPHandler._sproto_read_int(gs.get("defender_score"), 0)
+                my_win_times = att_score if camp == 1 else def_score
+                other_win_times = def_score if camp == 1 else att_score
+                my_team = _encode_game_battle_team_info(my_team_id, camp, my_win_times, _TCPHandler._sproto_build_struct_list(my_team_entries))
+                other_team = _encode_game_battle_team_info(other_team_id, 2 if camp == 1 else 1, other_win_times, _TCPHandler._sproto_build_struct_list(other_team_entries))
             else:
+                att_score = _TCPHandler._sproto_read_int(gs.get("attacker_score"), 0)
+                def_score = _TCPHandler._sproto_read_int(gs.get("defender_score"), 0)
+                my_win_times = att_score if camp == 1 else def_score
+                other_win_times = def_score if camp == 1 else att_score
                 player = _encode_game_character_choose_player(
                     pd["uid"],
                     my_bid,
@@ -15417,8 +15721,21 @@ def main():
                     region_id,
                 )
                 player_list = _TCPHandler._sproto_build_struct_list([player])
-                my_team = _encode_game_battle_team_info(my_team_id, camp, 0, player_list)
-                other_team = _encode_game_battle_team_info(other_team_id, 2 if camp == 1 else 1, 0, b"")
+                my_team = _encode_game_battle_team_info(my_team_id, camp, my_win_times, player_list)
+                if mode_id != 3:
+                    opp_bid = 6 if my_bid <= 5 else 1
+                    opp_uid = 9900002 if camp == 1 else 9900001
+                    opp_reg = _TCPHandler._resolve_spawn_region({"camp": 2 if camp == 1 else 1}, None)
+                    opp_player = _encode_game_character_choose_player(
+                        opp_uid,
+                        opp_bid,
+                        "Opponent",
+                        opp_reg,
+                    )
+                    other_player_list = _TCPHandler._sproto_build_struct_list([opp_player])
+                else:
+                    other_player_list = b""
+                other_team = _encode_game_battle_team_info(other_team_id, 2 if camp == 1 else 1, other_win_times, other_player_list)
 
             battle_body = [
                 (_TAG_RSP_BATTLE_INFO_MAP_ID, gs["map_id"]),
@@ -15497,30 +15814,69 @@ def main():
             rank_delta = _TCPHandler._sproto_read_int(gs.get("rank_delta"), 0)
             new_rank = old_rank + rank_delta
 
-            kills = max(0, _TCPHandler._sproto_read_int(gs.get("battle_kill"), 0))
-            assists = max(0, _TCPHandler._sproto_read_int(gs.get("battle_assist"), 0))
-            dead = max(0, _TCPHandler._sproto_read_int(gs.get("battle_dead"), 0))
-            score = max(0, _TCPHandler._sproto_read_int(gs.get("battle_score"), kills * 100 + assists * 50))
-            rank_score = max(0, _TCPHandler._sproto_read_int(gs.get("rank_score"), old_rank))
             ts = int(time.time())
-            player_result = _encode_game_battle_player_result(
-                uid=uid,
-                score=score,
-                kill=kills,
-                assist=assists,
-                dead=dead,
-                is_no_hurt=(dead == 0),
-                time_stamp=ts,
-                voicestate=0,
-                rank_score=rank_score,
-            )
+            room_players = _room_state.get("players")
+            result_entries: list[bytes] = []
+            winners_rank: list[int] = []
 
-            winners_rank: list[int] = [uid] if is_win else []
+            if _TCPHandler._room_is_active() and isinstance(room_players, dict) and len(room_players) > 0:
+                for p_uid_s, p_entry in room_players.items():
+                    p_uid = _safe_int(p_entry.get("uid"), 0)
+                    if p_uid <= 0:
+                        continue
+                    p_camp = max(1, _safe_int(p_entry.get("camp"), 1))
+                    if p_camp == win_camp:
+                        winners_rank.append(p_uid)
+                    p_pd = _online_ensure_profile(p_uid)
+                    p_score = 100
+                    p_kills = 0
+                    p_assists = 0
+                    p_dead = 0
+                    result_entries.append(_encode_game_battle_player_result(
+                        uid=p_uid,
+                        score=p_score,
+                        kill=p_kills,
+                        assist=p_assists,
+                        dead=p_dead,
+                        is_no_hurt=True,
+                        time_stamp=ts,
+                        voicestate=0,
+                        rank_score=_safe_int(p_pd.get("rank_score"), 1000),
+                    ))
+            else:
+                kills = max(0, _TCPHandler._sproto_read_int(gs.get("battle_kill"), 0))
+                assists = max(0, _TCPHandler._sproto_read_int(gs.get("battle_assist"), 0))
+                dead = max(0, _TCPHandler._sproto_read_int(gs.get("battle_dead"), 0))
+                score = max(0, _TCPHandler._sproto_read_int(gs.get("battle_score"), kills * 100 + assists * 50))
+                rank_score = max(0, _TCPHandler._sproto_read_int(gs.get("rank_score"), old_rank))
+                result_entries.append(_encode_game_battle_player_result(
+                    uid=uid,
+                    score=score,
+                    kill=kills,
+                    assist=assists,
+                    dead=dead,
+                    is_no_hurt=(dead == 0),
+                    time_stamp=ts,
+                    voicestate=0,
+                    rank_score=rank_score,
+                ))
+                if is_win:
+                    winners_rank.append(uid)
+
+            # winners_rank MUST NEVER be empty (client RoundScoreData accesses index 0 unconditionally)
+            if not winners_rank:
+                winners_rank = [uid]
+
+            att_score = _TCPHandler._sproto_read_int(gs.get("attacker_score"), 0)
+            def_score = _TCPHandler._sproto_read_int(gs.get("defender_score"), 0)
+            my_win_times = att_score if target_camp == 1 else def_score
+            enemy_win_times = def_score if target_camp == 1 else att_score
+
             common_result = _encode_game_common_battle_result(
-                my_win_times=1 if is_win else 0,
-                enemy_win_times=0 if is_win else 1,
+                my_win_times=my_win_times,
+                enemy_win_times=enemy_win_times,
                 winners_rank=winners_rank,
-                players_result=[player_result],
+                players_result=result_entries,
                 combat_type=_TCPHandler._sproto_read_int(gs.get("mode_id"), 0),
                 guide_id=_TCPHandler._sproto_read_int(gs.get("guide_id"), 0),
                 add_exp=max(0, _TCPHandler._sproto_read_int(gs.get("battle_add_exp"), 0)),
@@ -15546,7 +15902,7 @@ def main():
         def _build_leave_result_pushes(gs: dict, target_pd: dict | None = None) -> list[tuple[bytes, str]]:
             players_result = _TCPHandler._build_players_result_push(gs, target_pd=target_pd)
             battle_final_result = _TCPHandler._build_battle_final_result_push(gs, target_pd=target_pd)
-            battle_result = _TCPHandler._build_battle_result_push(gs)
+            battle_result = _TCPHandler._build_battle_result_push(gs, target_pd=target_pd)
             return [
                 (players_result, "sproto-push-players-result"),
                 (battle_final_result, "sproto-push-battle-final-result"),
@@ -15554,12 +15910,17 @@ def main():
             ]
 
         @staticmethod
-        def _build_battle_result_push(gs: dict) -> bytes:
+        def _build_battle_result_push(gs: dict, target_pd: dict | None = None) -> bytes:
             """Build RspBattleResult (1102) push frame with minimal source-shaped payload."""
+            pd = target_pd if isinstance(target_pd, dict) else _player_data
+            uid = _TCPHandler._sproto_read_int(pd.get("uid"), 1000001)
+            target_camp = max(1, _safe_int(_room_state.get("players", {}).get(str(uid), {}).get("camp"), gs.get("camp", 1)))
+            win_camp = _TCPHandler._sproto_read_int(gs.get("win_camp"), 1)
+            is_win = 1 if target_camp == win_camp else 0
+
             old_rank = _TCPHandler._sproto_read_int(gs.get("rank_score"), 0)
             rank_delta = _TCPHandler._sproto_read_int(gs.get("rank_delta"), 0)
             new_rank = old_rank + rank_delta
-            is_win = 1 if _TCPHandler._sproto_read_int(gs.get("camp"), 1) == 1 else 0
 
             rank_result = _encode_game_rank_player_result(
                 old_rank,
@@ -16656,20 +17017,13 @@ def main():
                 _append_utf8_log(line_b)
                 try:
                     import battle_server as _battle_server_module
-                    _battle_server_module = importlib.reload(_battle_server_module)
                     handle_battle_connection = _battle_server_module.handle_battle_connection
-                    build_tag = str(getattr(_battle_server_module, "BATTLE_SERVER_BUILD_TAG", "unknown"))
-                    module_path = str(getattr(_battle_server_module, "__file__", "unknown"))
-                    line_mod = (
-                        f"[TCP] battle module loaded tag={build_tag} "
-                        f"path={module_path}"
-                    )
-                    print(_console_safe(line_mod))
-                    _append_utf8_log(line_mod)
                     def _battle_log(msg: str):
                         safe = _console_safe(f"[Battle] {msg}")
                         print(safe)
                         _append_utf8_log(f"[Battle] {msg}")
+                    if int(_game_state.get("mode_id", 0) or 0) <= 0:
+                        _game_state["mode_id"] = 4
                     handle_battle_connection(
                         self.request, self.client_address,
                         _game_state, _player_data, _battle_log)
@@ -16984,6 +17338,118 @@ def main():
                         if _ACTIVE_LOBBY_HANDLERS.get(uid_s) is self:
                             _ACTIVE_LOBBY_HANDLERS.pop(uid_s, None)
 
+    def _handle_battle_server_round_end(battle_id: int, round_num: int, winner_camp: int, attacker_score: int = 0, defender_score: int = 0, **kwargs):
+        is_match_end = kwargs.get("is_match_end", False)
+        mode_id = int(_game_state.get("mode_id", 4) or 4)
+        target_score = 1 if mode_id == 3 else 3
+        if attacker_score >= target_score or defender_score >= target_score:
+            is_match_end = True
+
+        print(
+            f"[_handle_battle_server_round_end] Round #{round_num} (match_end={is_match_end}) "
+            f"for battle_id={battle_id}, winner={winner_camp}, scores: Attacker {attacker_score} : {defender_score} Defender"
+        )
+        
+        _game_state["round"] = round_num
+        _game_state["attacker_score"] = attacker_score
+        _game_state["defender_score"] = defender_score
+        _game_state["win_camp"] = winner_camp
+
+        if is_match_end:
+            _game_state["in_battle"] = False
+            recipients = set()
+            for uid_s in list(_ACTIVE_LOBBY_HANDLERS.keys()):
+                try:
+                    recipients.add(int(uid_s))
+                except ValueError:
+                    pass
+            for uid_s in list(_room_state.get("players", {}).keys()):
+                try:
+                    recipients.add(int(uid_s))
+                except ValueError:
+                    pass
+
+            for p_uid in recipients:
+                if p_uid <= 0:
+                    continue
+                try:
+                    pd = _online_ensure_profile(p_uid)
+                    pushes = _TCPHandler._build_leave_result_pushes(_game_state, target_pd=pd)
+                    for push_pkt, push_tag in pushes:
+                        _TCPHandler._queue_pending_push(p_uid, (push_pkt, push_tag))
+                        print(f"[_handle_battle_server_round_end] Pushed {push_tag} to uid={p_uid} on MATCH OVER")
+                except Exception as e:
+                    print(f"Error pushing match final results to uid={p_uid}: {e}")
+            return
+        
+        # Round continues -> return all players to PreBattle selection phase!
+        _game_state["in_battle"] = True
+        _game_state["prebattle_room_started"] = True
+        _game_state["prebattle_flow_active"] = True
+        _game_state["prebattle_stage"] = 1
+        _game_state["wait_time"] = 25
+        _game_state["_confirm_sent"] = False
+        _game_state["_confirm_pending"] = False
+        _game_state["_prebattle_choose_character_pushed"] = False
+
+        if _TCPHandler._room_is_active():
+            _room_state["battle_launched"] = False
+            room_players = _room_state.get("players", {})
+            for p_entry in room_players.values():
+                if isinstance(p_entry, dict):
+                    p_entry["prebattle_stage"] = 1
+                    p_entry["is_ready"] = False
+
+        try:
+            recipients = set()
+            for uid_s in list(_ACTIVE_LOBBY_HANDLERS.keys()):
+                try:
+                    recipients.add(int(uid_s))
+                except ValueError:
+                    pass
+            for uid_s in list(_room_state.get("players", {}).keys()):
+                try:
+                    recipients.add(int(uid_s))
+                except ValueError:
+                    pass
+
+            for p_uid in recipients:
+                if p_uid <= 0:
+                    continue
+                try:
+                    pd = _online_ensure_profile(p_uid)
+                    # 1. Update battle info with new round and score
+                    push_pkt = _TCPHandler._build_battle_info_push(_game_state, target_pd=pd)
+                    _TCPHandler._queue_pending_push(p_uid, (push_pkt, "sproto-push-battle-info-next-round"))
+
+                    # 2. RspRoomStart (1014) to transition client from BattleState to PreBattleState
+                    room_start_pkt = _TCPHandler._build_room_start_push(_game_state, target_pd=pd)
+                    _TCPHandler._queue_pending_push(p_uid, (room_start_pkt, "sproto-push-room-start-next-round"))
+
+                    # 3. PreBattleInfo (1044) to populate character/spawn/loadout info
+                    extra_pushes: list[tuple[bytes, str]] = []
+                    _TCPHandler._append_prebattle_info_push(
+                        extra_pushes,
+                        _game_state,
+                        pd,
+                        tag="sproto-push-prebattle-info-next-round",
+                        ensure_choose_character_push=False,
+                    )
+                    for pkt, tag_s in extra_pushes:
+                        _TCPHandler._queue_pending_push(p_uid, (pkt, tag_s))
+
+                    print(f"[_handle_battle_server_round_end] Pushed Round #{round_num} PreBattle (1014/1044/1029) to uid={p_uid}")
+                except Exception as e:
+                    print(f"Error pushing Round #{round_num} PreBattle to uid={p_uid}: {e}")
+        except Exception as e:
+            print(f"Error pushing round end prebattle transitions: {e}")
+            
+    try:
+        import battle_server as bs
+        bs.ON_ROUND_END_CALLBACK = _handle_battle_server_round_end
+    except Exception as e:
+        print(f"Failed to set ON_ROUND_END_CALLBACK: {e}")
+
     def _start_tcp_stub(port: int, required: bool):
         if os.name == "nt":
             _free_windows_port(port, "TCP")
@@ -17127,21 +17593,37 @@ def main():
         _append_utf8_log(msg)
         udpd.serve_forever()
 
+    global PORT
     try:
         httpd = TLSServer(("0.0.0.0", PORT), Handler)
-    except PermissionError as e:
-        print(
-            "Cannot bind port %s: %s\n"
-            "  1) Run PowerShell: right-click -> Run as administrator, then:\n"
-            "       cd %s\n"
-            "       python run_https_443.py\n"
-            "  2) Or see what uses the port:  netstat -ano | findstr :%s\n"
-            "  3) For a quick browser test on another port:  set HTTPS_PORT=8443\n"
-            "     (the game uses https://... default port 443 — 8443 is only for manual checks)."
-            % (PORT, e, DIR, PORT),
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    except (PermissionError, OSError) as e:
+        is_perm = isinstance(e, PermissionError) or getattr(e, "errno", None) in (13, 1)
+        if PORT == 443 and is_perm:
+            PORT = 8443
+            print(
+                f"[TERMUX / NON-ROOT AUTO-FALLBACK] Cannot bind to privileged port 443 ({e}).\n"
+                f"  -> Automatically switched to HTTPS port {PORT}!\n"
+                f"  -> Client can connect by setting IP:PORT in local_server_ip.txt (e.g. 127.0.0.1:{PORT})."
+            )
+            try:
+                httpd = TLSServer(("0.0.0.0", PORT), Handler)
+            except Exception as e2:
+                print(f"Failed to bind fallback port {PORT}: {e2}", file=sys.stderr)
+                sys.exit(1)
+        else:
+            print(
+                "Cannot bind port %s: %s\n"
+                "  1) Run PowerShell: right-click -> Run as administrator, then:\n"
+                "       cd %s\n"
+                "       python run_https_443.py\n"
+                "  2) Or see what uses the port:  netstat -ano | findstr :%s\n"
+                "  3) For a quick browser test on another port:  set HTTPS_PORT=8443\n"
+                "     (the game uses https://... default port 443 — 8443 is only for manual checks).\n"
+                "  4) For Termux / non-root: python run_https_443.py --termux"
+                % (PORT, e, DIR, PORT),
+                file=sys.stderr,
+            )
+            sys.exit(1)
     httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
 
     # Create capture directories up-front so it's obvious whether any traffic arrived.
@@ -17222,9 +17704,8 @@ if __name__ == "__main__":
 
 
 
-import threading
-import time
-import os
+
+
 
 def poll_reset_gadgets():
     while True:

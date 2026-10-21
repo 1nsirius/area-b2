@@ -3,6 +3,7 @@ import json
 import time
 import threading
 from pathlib import Path
+import database
 
 from services.session_manager import (
     _GP_LOCK, _GP_TOKEN_TO_PLAYER_ID,
@@ -173,90 +174,20 @@ def _online_profile_from_player_data(pd: object) -> dict[str, object]:
 
 
 def _get_or_create_uid_for_account(account: str) -> int:
-    acc_str = str(account or "").strip()
-    if not acc_str:
-        return 1000001
-    with _ONLINE_LOCK:
-        mapping = _ONLINE_STATE.get("account_to_uid")
-        if not isinstance(mapping, dict):
-            mapping = {}
-            _ONLINE_STATE["account_to_uid"] = mapping
-
-        # Direct mapping lookup (exact or case-insensitive)
-        if acc_str in mapping:
-            return int(mapping[acc_str])
-        for k, v in mapping.items():
-            if k.lower() == acc_str.lower():
-                return int(v)
-
-        # If it's already a numeric UID, return it directly
-        if acc_str.isdigit():
-            val = int(acc_str)
-            if val >= 1000001:
-                mapping[acc_str] = val
-                return val
-
-        # Check existing profiles by player name
-        profiles = _ONLINE_STATE.get("profiles", {})
-        if isinstance(profiles, dict):
-            for u_str, u_prof in profiles.items():
-                if isinstance(u_prof, dict) and str(u_prof.get("name", "")).strip().lower() == acc_str.lower():
-                    matched_uid = int(u_str) if u_str.isdigit() else 1000001
-                    mapping[acc_str] = matched_uid
-                    return matched_uid
-
-        # Fallback to allocating new UID
-        mapped_values = [int(v) for v in mapping.values() if isinstance(v, (int, str)) and str(v).isdigit()]
-        max_mapped = max(mapped_values) if mapped_values else 1000000
-        max_stored = 1000000
-        if hasattr(globals().get("_player_data", None), "storage"):
-            pd_storage = globals()["_player_data"].storage
-            if pd_storage:
-                try:
-                    max_stored = max(int(k) for k in pd_storage.keys() if str(k).isdigit())
-                except ValueError:
-                    pass
-
-        new_uid = max(max_mapped, max_stored) + 1
-        mapping[acc_str] = new_uid
-        try:
-            _ONLINE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-            with _ONLINE_STATE_PATH.open("w", encoding="utf-8", newline="\n") as f:
-                json.dump(_ONLINE_STATE, f, ensure_ascii=False, indent=2)
-        except Exception:
-            pass
-        return new_uid
+    return database.get_or_create_uid_for_account(account)
 
 def _online_ensure_profile(uid: object, *, local_pd: object = None) -> dict[str, object]:
     uid_s = _uid_str(uid, "1000001")
-    changed = False
+    uid_num = _safe_int(uid_s, 1000001)
+    prof = database.ensure_profile(uid_num)
+    
     with _ONLINE_LOCK:
         profiles = _ONLINE_STATE.get("profiles")
         if not isinstance(profiles, dict):
             profiles = {}
             _ONLINE_STATE["profiles"] = profiles
-            changed = True
-
-        profile_obj = profiles.get(uid_s)
-        if not isinstance(profile_obj, dict):
-            profile_obj = _online_default_profile(uid_s)
-            profiles[uid_s] = profile_obj
-            changed = True
-
-        if isinstance(local_pd, dict):
-            local_uid = _uid_str(local_pd.get("uid"), "1000001")
-            if local_uid == uid_s:
-                merged = _online_profile_from_player_data(local_pd)
-                for key, val in merged.items():
-                    if profile_obj.get(key) != val:
-                        profile_obj[key] = val
-                        changed = True
-
-        out = dict(profile_obj)
-
-    if changed:
-        _save_online_state()
-    return out
+        profiles[uid_s] = prof
+    return prof
 
 
 def _online_update_profile(

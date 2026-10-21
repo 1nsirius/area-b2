@@ -481,8 +481,7 @@ def handle_route(path: str, req_json: dict, host: str, caller_uid_int: int, cont
 
     if path in ("/gp/p10470/v2/acquire", "/gp/p10470/v2/login", "/gp/p10470/v2/global_acquire"):
         import services.gp
-        resp = services.gp.generate_acquire_response(req_json, host, context)
-        context['send_json'](resp)
+        services.gp.generate_acquire_response(req_json, host, context)
         return True
 
     if path.startswith("/gp/p10470/v2/"):

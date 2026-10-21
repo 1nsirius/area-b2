@@ -223,12 +223,12 @@ def record_player_activity(player_id: object) -> None:
     pid_s = utils._uid_str(player_id, "")
     if not pid_s:
         return
-    was_online = is_player_online(pid_s)
     with _CHAT_LOCK:
         _CHAT_ACTIVE_PLAYERS[pid_s] = time.time()
-    if not was_online:
-        new_state = get_player_state(pid_s)
-        _broadcast_player_status_change(pid_s, new_state)
+    cur_state = get_player_state(pid_s)
+    old_state = _PLAYER_LAST_BROADCASTED_STATE.get(pid_s, -1)
+    if cur_state != old_state:
+        _broadcast_player_status_change(pid_s, cur_state)
 
 
 def remove_player_activity(player_id: object) -> None:
@@ -256,6 +256,17 @@ def get_player_state(player_id: object) -> int:
     pid_s = utils._uid_str(player_id, "")
     if not is_player_online(pid_s):
         return 0  # Offline
+    # Check if in battle
+    try:
+        import battle_server
+        if hasattr(battle_server, "_game_state") and battle_server._game_state is not None:
+            session = battle_server._game_state
+            if hasattr(session, "players"):
+                for bp in session.players.values():
+                    if str(getattr(bp, "uid", "")) == pid_s and getattr(bp, "sock", None) is not None:
+                        return 6  # InBattle
+    except Exception:
+        pass
     # Check if in room via room_state
     try:
         from run_https_443 import _room_state as r_state
@@ -294,22 +305,54 @@ def _broadcast_player_status_change(player_id: object, new_state: int) -> None:
         return
     _PLAYER_LAST_BROADCASTED_STATE[pid_s] = new_state
     try:
-        import database
-        friends = database.get_friends(int(pid_s))
-        for f_uid in friends:
-            f_s = str(f_uid)
-            if is_player_online(f_s):
-                push_friend_info_change(f_s, pid_s)
+        friends_set: set[str] = set()
+        # 1) SQLite friends
+        try:
+            import database
+            for f_uid in database.get_friends(int(pid_s)):
+                friends_set.add(str(f_uid))
+        except Exception:
+            pass
+        # 2) online_state friends
+        try:
+            for f_s in db._online_get_uid_list("friends", pid_s):
+                if f_s:
+                    friends_set.add(str(f_s))
+        except Exception:
+            pass
+
+        for f_s in friends_set:
+            push_friend_info_change(f_s, pid_s)
     except Exception as exc:
         utils._append_utf8_log(f"[PUSH:FRIEND] status broadcast error for {pid_s}: {exc}")
 
 
 def _check_and_broadcast_all_status_changes() -> None:
     try:
-        import database
-        all_profiles = database.get_all_profiles()
-        for uid_int in all_profiles.keys():
-            uid_s = str(uid_int)
+        candidates: set[str] = set()
+        # All database profile UIDs
+        try:
+            import database
+            all_profiles = database.get_all_profiles()
+            for uid_k in all_profiles.keys():
+                candidates.add(str(uid_k))
+        except Exception:
+            pass
+        # All online state profile UIDs
+        try:
+            with db._ONLINE_LOCK:
+                p_dict = db._ONLINE_STATE.get("profiles")
+                if isinstance(p_dict, dict):
+                    for uid_k in p_dict.keys():
+                        candidates.add(str(uid_k))
+        except Exception:
+            pass
+        # All active and previously broadcasted players
+        with _CHAT_LOCK:
+            candidates.update(_CHAT_ACTIVE_PLAYERS.keys())
+            candidates.update(_PLAYER_LAST_BROADCASTED_STATE.keys())
+
+        for uid_s in candidates:
             cur_state = get_player_state(uid_s)
             old_state = _PLAYER_LAST_BROADCASTED_STATE.get(uid_s, -1)
             if cur_state != old_state:
@@ -321,7 +364,7 @@ def _check_and_broadcast_all_status_changes() -> None:
 def _status_checker_daemon_loop() -> None:
     while True:
         try:
-            time.sleep(5.0)
+            time.sleep(2.0)
             _check_and_broadcast_all_status_changes()
         except Exception:
             pass
@@ -385,7 +428,7 @@ def get_player_profile_payload(uid: object, *, local_pd: object = None) -> dict[
         "is_in_battle": cur_state in (6, 7),
         "is_allow_watch": True,
         "rank_level": rank_score // 100,
-        "update_time": max(1, utils._safe_int(profile.get("update_time"), now_ts)),
+        "update_time": now_ts,
         "player_info": player_info,
     }
 
@@ -725,6 +768,11 @@ def handle_chat_command(
         if cmd == "login":
             token = str(req_msg.get("token") or "").strip()
             utils._append_utf8_log(f"[CHAT] login player_id={player_id} token={token[:16]}...")
+            try:
+                import services.holo as holo_service
+                holo_service.chat_bootstrap_mark(player_id, "seen_chat_login", True, utils._append_utf8_log)
+            except Exception:
+                pass
             record_player_activity(player_id)
             _broadcast_player_status_change(player_id, 2)
             return cmd, {
@@ -767,6 +815,16 @@ def handle_chat_command(
                 custom_data = content.get("data")
                 if not isinstance(custom_data, dict):
                     custom_data = {}
+                else:
+                    custom_data = dict(custom_data)
+                    if "type" in custom_data:
+                        custom_data["type"] = utils._safe_int(custom_data["type"], 4)
+                    if "curNum" in custom_data:
+                        custom_data["curNum"] = utils._safe_int(custom_data["curNum"], 1)
+                    if "rankmin" in custom_data:
+                        custom_data["rankmin"] = utils._safe_int(custom_data["rankmin"], 1)
+                    if "rankmax" in custom_data:
+                        custom_data["rankmax"] = utils._safe_int(custom_data["rankmax"], 5)
                 content["data"] = custom_data
             else:
                 text_data = str(content.get("data") or "")
@@ -838,9 +896,28 @@ def handle_chat_command(
                 if rid != player_id:
                     enqueue_push(rid, "push-info-msg", push_payload)
 
-            utils._append_utf8_log(
-                f"[CHAT] send session={session_id} type={content_type} sender={player_id} recipients={len(recipient_ids)}"
+            sender_name = sender_profile.get("name") or f"Player{player_id}"
+            data_preview = content.get("data")
+            if isinstance(data_preview, dict):
+                room_id = data_preview.get("roomId") or data_preview.get("room_id") or ""
+                log_content = f"Recruit Card (Type={data_preview.get('type')}, Room={room_id})"
+            else:
+                log_content = f"'{data_preview}'"
+
+            recipients_str = ",".join(sorted(recipient_ids))
+
+            in_log = (
+                f"[CHAT IN]  From: UID={player_id} ({sender_name}) | "
+                f"Type={content_type.upper()} | Session={session_id} | Content={log_content}"
             )
+            out_log = (
+                f"[CHAT OUT] Broadcast to {len(recipient_ids)} client(s) (UIDs: {recipients_str}) | "
+                f"MsgID={msg_id} | Session={session_id}"
+            )
+            print(f"{in_log}")
+            print(f"{out_log}")
+            utils._append_utf8_log(in_log)
+            utils._append_utf8_log(out_log)
 
             return cmd, {
                 "code": 0,

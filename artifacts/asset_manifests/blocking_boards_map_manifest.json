@@ -1,0 +1,2910 @@
+{
+  "schema_version": 3,
+  "generated_at_utc": "2026-05-02T15:34:26.240023+00:00",
+  "source": {
+    "scene_bundle_map": "decrypted_UnityAssets/prepared_assets/reports/scene_bundle_map.tsv",
+    "asset_bundles_root": "decrypted_UnityAssets/prepared_assets/AssetBundles",
+    "selection_rule": "MonoBehaviour with keys _id and mConfig",
+    "block_type_rule": "cfg_path_id resolved from bundles by MonoBehaviour.block_type",
+    "init_state_rule": "mInitState extracted from scene MonoBehaviour"
+  },
+  "maps": {
+    "1": {
+      "scene": "level02_can",
+      "bundle": "4001839f43e3ba8b935ece9c542c1ae4.unity3d",
+      "boards": [
+        {
+          "id": 216,
+          "anchor": [
+            -12.184,
+            -6.975,
+            -4.7612
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": -6691756054554772865,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 1
+        },
+        {
+          "id": 217,
+          "anchor": [
+            -8.9201,
+            -6.975,
+            -1.8043
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 218,
+          "anchor": [
+            0.283,
+            -6.975,
+            0.20265
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 219,
+          "anchor": [
+            8.7351,
+            -6.975,
+            -5.4136
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 220,
+          "anchor": [
+            5.97,
+            -6.975,
+            8.2934
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 221,
+          "anchor": [
+            -6.5666,
+            -6.975,
+            -3.1146
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 222,
+          "anchor": [
+            0.28338,
+            -6.975,
+            -12.015
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 223,
+          "anchor": [
+            14.153,
+            -6.975,
+            3.642
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 1
+        },
+        {
+          "id": 224,
+          "anchor": [
+            7.158,
+            -6.975,
+            0.779
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 225,
+          "anchor": [
+            5.604,
+            -6.975,
+            5.433
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 226,
+          "anchor": [
+            12.49,
+            -6.975,
+            -3.16
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 227,
+          "anchor": [
+            4.016,
+            -6.975,
+            -2.211
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 228,
+          "anchor": [
+            -5.842,
+            -6.975,
+            12.179
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 1
+        },
+        {
+          "id": 229,
+          "anchor": [
+            -1.769,
+            -2.18,
+            10.404
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 230,
+          "anchor": [
+            2.8787,
+            -2.18,
+            12.8756
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": -4517012917690429818,
+          "block_type": 0,
+          "profile": "wide_door",
+          "init_state": 2
+        },
+        {
+          "id": 231,
+          "anchor": [
+            -7.1513,
+            -2.18,
+            4.301
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 232,
+          "anchor": [
+            -6.567,
+            -2.18,
+            -2.476
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 233,
+          "anchor": [
+            2.63,
+            -2.18,
+            -9.767
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 234,
+          "anchor": [
+            -2.681,
+            -2.18,
+            -9.666
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 235,
+          "anchor": [
+            -4.877,
+            -2.18,
+            -12.793
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 236,
+          "anchor": [
+            -1.797,
+            -2.18,
+            1.988
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 237,
+          "anchor": [
+            10.472,
+            -2.18,
+            1.97
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 238,
+          "anchor": [
+            8.631,
+            -2.18,
+            5.782
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 239,
+          "anchor": [
+            6.268,
+            -2.18,
+            7.519
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 240,
+          "anchor": [
+            -1.797,
+            -2.18,
+            -6.376
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 241,
+          "anchor": [
+            8.734,
+            -2.18,
+            -3.379
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 242,
+          "anchor": [
+            -6.85,
+            1.45,
+            3.5557
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 243,
+          "anchor": [
+            12.638,
+            1.45,
+            2.8366
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 244,
+          "anchor": [
+            -2.63,
+            1.45,
+            -11.297
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 245,
+          "anchor": [
+            -0.77514,
+            1.45,
+            -12.834
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 246,
+          "anchor": [
+            1.07,
+            1.45,
+            -2.207
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 247,
+          "anchor": [
+            -5.2238,
+            1.45,
+            -12.798
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 248,
+          "anchor": [
+            4.9692,
+            1.45,
+            2.8366
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 249,
+          "anchor": [
+            8.7437,
+            1.45,
+            11.26
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 250,
+          "anchor": [
+            -6.85,
+            1.45,
+            11.056
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 251,
+          "anchor": [
+            -8.1968,
+            1.45,
+            -2.1992
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 252,
+          "anchor": [
+            -2.63,
+            1.45,
+            -0.29474
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 253,
+          "anchor": [
+            -3.6082,
+            1.45,
+            -17.314
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 254,
+          "anchor": [
+            0.633,
+            5.11,
+            -12.891
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 255,
+          "anchor": [
+            -6.748,
+            5.11,
+            -5.369
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 256,
+          "anchor": [
+            -6.598,
+            5.11,
+            3.645
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 257,
+          "anchor": [
+            -10.388,
+            5.11,
+            5.487
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 258,
+          "anchor": [
+            -6.592,
+            5.11,
+            8.511
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 259,
+          "anchor": [
+            -1.304,
+            5.11,
+            6.108
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 260,
+          "anchor": [
+            0.116,
+            5.11,
+            11.16
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 261,
+          "anchor": [
+            8.442,
+            5.11,
+            3.8588
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 262,
+          "anchor": [
+            12.533,
+            5.11,
+            2.172
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 263,
+          "anchor": [
+            1.805,
+            5.11,
+            2.172
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 264,
+          "anchor": [
+            7.206,
+            5.11,
+            -2.203
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 265,
+          "anchor": [
+            4.9,
+            5.11,
+            -8.018
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 266,
+          "anchor": [
+            -6.741,
+            5.11,
+            -18.297
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 267,
+          "anchor": [
+            -5.097,
+            5.11,
+            -2.205
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 268,
+          "anchor": [
+            14.113,
+            -2.26232,
+            10.067
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 269,
+          "anchor": [
+            -12.143,
+            -2.2584,
+            5.478
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 270,
+          "anchor": [
+            -12.143,
+            -2.2544,
+            -16.992
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 271,
+          "anchor": [
+            5.74,
+            -2.2524,
+            -12.971
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 272,
+          "anchor": [
+            -6.291,
+            1.3877,
+            -19.94
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 273,
+          "anchor": [
+            6.139,
+            1.3877,
+            12.847
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 274,
+          "anchor": [
+            14.113,
+            1.3877,
+            5.4146
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 275,
+          "anchor": [
+            14.113,
+            1.3877,
+            -4.2
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 276,
+          "anchor": [
+            -12.143,
+            1.3877,
+            9.6177
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 277,
+          "anchor": [
+            -12.143,
+            1.3877,
+            0.063
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 278,
+          "anchor": [
+            -12.143,
+            1.3877,
+            -4.738
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 279,
+          "anchor": [
+            2.487,
+            1.3877,
+            -14.652
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 280,
+          "anchor": [
+            -12.143,
+            5.0436,
+            -4.186
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 281,
+          "anchor": [
+            -12.143,
+            5.0436,
+            1.723
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 282,
+          "anchor": [
+            -12.143,
+            5.0436,
+            10.689
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 283,
+          "anchor": [
+            -12.143,
+            5.0436,
+            -14.703
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 284,
+          "anchor": [
+            14.113,
+            5.0366,
+            -5.362
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 285,
+          "anchor": [
+            10.004,
+            5.0433,
+            12.877
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 286,
+          "anchor": [
+            7.5414,
+            5.0444,
+            -13.012
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        }
+      ]
+    },
+    "2": {
+      "scene": "level03_mex",
+      "bundle": "2f69daace53e2b34f62f6f14a2e1fd23.unity3d",
+      "boards": [
+        {
+          "id": 169,
+          "anchor": [
+            22.741,
+            -0.0244,
+            -9.0788
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 170,
+          "anchor": [
+            -15.987,
+            0.05,
+            12.627
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 171,
+          "anchor": [
+            -13.085,
+            0.05,
+            21.61
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 172,
+          "anchor": [
+            5.868,
+            0.05,
+            12.639
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 173,
+          "anchor": [
+            13.635,
+            0.05,
+            -17.491
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 174,
+          "anchor": [
+            -7.297,
+            0.05,
+            4.265
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 175,
+          "anchor": [
+            -9.791,
+            0.05,
+            -3.967
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 176,
+          "anchor": [
+            -9.905,
+            0.05,
+            -10.119
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 177,
+          "anchor": [
+            -7.056,
+            -0.0253,
+            25.666
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 178,
+          "anchor": [
+            -20.591,
+            0.05,
+            -18.947
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 1
+        },
+        {
+          "id": 179,
+          "anchor": [
+            14.438,
+            0.05,
+            25.655
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 1
+        },
+        {
+          "id": 180,
+          "anchor": [
+            22.74055,
+            0.05,
+            -1.7092
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": -4517012917690429818,
+          "block_type": 0,
+          "profile": "wide_door",
+          "init_state": 1
+        },
+        {
+          "id": 181,
+          "anchor": [
+            -0.10288,
+            0.05,
+            22.987
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 182,
+          "anchor": [
+            -18.484,
+            0.05,
+            2.398
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 183,
+          "anchor": [
+            -11.586,
+            0.05,
+            -17.055
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 184,
+          "anchor": [
+            20.893,
+            0.05,
+            1.678
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 185,
+          "anchor": [
+            1.946,
+            0.05,
+            -8.544
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 186,
+          "anchor": [
+            16.548,
+            0.05,
+            4.08
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 187,
+          "anchor": [
+            -20.119,
+            -0.0253,
+            14.778
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 1
+        },
+        {
+          "id": 188,
+          "anchor": [
+            -9.142,
+            -0.0244,
+            -26.103
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 189,
+          "anchor": [
+            12.53,
+            0.05,
+            15.4
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 190,
+          "anchor": [
+            19.49,
+            3.6247,
+            1.539
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 191,
+          "anchor": [
+            12.26,
+            3.7,
+            -12.09
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 192,
+          "anchor": [
+            -20.115,
+            3.6145,
+            8.6651
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 193,
+          "anchor": [
+            5.642,
+            3.7,
+            12.629
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 194,
+          "anchor": [
+            -2.05,
+            3.7,
+            12.629
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 195,
+          "anchor": [
+            -7.324,
+            3.7,
+            5.281
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 196,
+          "anchor": [
+            -10.04455,
+            3.7,
+            -0.827
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": -4517012917690429818,
+          "block_type": 0,
+          "profile": "wide_door",
+          "init_state": 1
+        },
+        {
+          "id": 197,
+          "anchor": [
+            1.951,
+            3.7,
+            -7.2463
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 198,
+          "anchor": [
+            -3.332,
+            3.7,
+            -10.124
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 199,
+          "anchor": [
+            -13.041,
+            3.7,
+            -10.124
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 200,
+          "anchor": [
+            9.53,
+            3.6258,
+            25.659
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 201,
+          "anchor": [
+            16.281,
+            3.7,
+            6.533
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 202,
+          "anchor": [
+            -2.402,
+            3.6076,
+            25.658
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 203,
+          "anchor": [
+            6.636,
+            3.6237,
+            -18.944
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 204,
+          "anchor": [
+            22.74,
+            3.6247,
+            -15.178
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 205,
+          "anchor": [
+            -11.561,
+            3.7,
+            -17.256
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 206,
+          "anchor": [
+            16.065,
+            3.7,
+            -4.818
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 207,
+          "anchor": [
+            22.74,
+            3.6247,
+            7.735
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 208,
+          "anchor": [
+            -22.72,
+            3.6145,
+            -12.025
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 209,
+          "anchor": [
+            -7.725,
+            3.6237,
+            -18.937
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 210,
+          "anchor": [
+            -15.79,
+            3.6145,
+            12.771
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 211,
+          "anchor": [
+            20.918,
+            3.6247,
+            15.227
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        }
+      ]
+    },
+    "3": {
+      "scene": "level04_rus",
+      "bundle": "1d61e87067dc84bf933fdefc25d37f27.unity3d",
+      "boards": [
+        {
+          "id": 177,
+          "anchor": [
+            2.907,
+            1.8292,
+            -12.901
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 178,
+          "anchor": [
+            17.52,
+            1.8292,
+            -12.901
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 179,
+          "anchor": [
+            24.838,
+            1.8292,
+            -2.5567
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 180,
+          "anchor": [
+            38.077,
+            1.8292,
+            1.7467
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 181,
+          "anchor": [
+            38.872,
+            1.8292,
+            15.602
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 1
+        },
+        {
+          "id": 182,
+          "anchor": [
+            25.518,
+            1.8292,
+            21.062
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 1
+        },
+        {
+          "id": 183,
+          "anchor": [
+            27.467,
+            1.8292,
+            19.011
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 1
+        },
+        {
+          "id": 184,
+          "anchor": [
+            13.361,
+            1.8292,
+            21.062
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 1
+        },
+        {
+          "id": 185,
+          "anchor": [
+            -18.651,
+            1.8292,
+            10.554
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 1
+        },
+        {
+          "id": 186,
+          "anchor": [
+            6.7162,
+            -1.69,
+            -10.954
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 187,
+          "anchor": [
+            3.0616,
+            -1.69,
+            0.18125
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 188,
+          "anchor": [
+            -4.9613,
+            -1.69,
+            -1.3554
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 189,
+          "anchor": [
+            -6.6483,
+            -1.69,
+            -12.757
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 190,
+          "anchor": [
+            -14.351,
+            -1.69,
+            8.6078
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 191,
+          "anchor": [
+            -5.6346,
+            -1.69,
+            10.607
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 192,
+          "anchor": [
+            5.5968,
+            -1.69,
+            18.04
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 193,
+          "anchor": [
+            5.5968,
+            -1.69,
+            7.671
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 194,
+          "anchor": [
+            16.083,
+            -1.69,
+            6.2
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 195,
+          "anchor": [
+            18.647,
+            -1.69,
+            13.661
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 196,
+          "anchor": [
+            20.533,
+            -1.69,
+            4.617
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 197,
+          "anchor": [
+            25.547,
+            -1.69,
+            0.179
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 198,
+          "anchor": [
+            30.473,
+            -1.69,
+            -9.788
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 199,
+          "anchor": [
+            16.721,
+            -1.69,
+            -2.0687
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 200,
+          "anchor": [
+            -23.39,
+            -1.69,
+            -19.33645
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": -4517012917690429818,
+          "block_type": 0,
+          "profile": "wide_door",
+          "init_state": 0
+        },
+        {
+          "id": 201,
+          "anchor": [
+            -12.265,
+            -1.69,
+            2.12895
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": -4231871646099518834,
+          "block_type": 0,
+          "profile": "wide_door",
+          "init_state": 0
+        },
+        {
+          "id": 202,
+          "anchor": [
+            -6.8894,
+            -1.69,
+            6.19615
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": -4231871646099518834,
+          "block_type": 0,
+          "profile": "wide_door",
+          "init_state": 0
+        },
+        {
+          "id": 203,
+          "anchor": [
+            22.985,
+            -1.69,
+            15.463
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 204,
+          "anchor": [
+            -24.563,
+            -1.69,
+            5.8719
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 205,
+          "anchor": [
+            -12.716,
+            -1.69,
+            -31.423
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 2
+        },
+        {
+          "id": 206,
+          "anchor": [
+            -16.726,
+            -1.69,
+            -31.423
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 2
+        },
+        {
+          "id": 207,
+          "anchor": [
+            27.467,
+            -1.69,
+            19.235
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 1
+        },
+        {
+          "id": 208,
+          "anchor": [
+            38.831,
+            -1.69,
+            1.7446
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 2
+        },
+        {
+          "id": 209,
+          "anchor": [
+            -23.389,
+            -1.69,
+            10.55
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 1
+        },
+        {
+          "id": 210,
+          "anchor": [
+            30.16,
+            1.953,
+            0.21441
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": -4517012917690429818,
+          "block_type": 0,
+          "profile": "wide_door",
+          "init_state": 2
+        },
+        {
+          "id": 211,
+          "anchor": [
+            -6.9691,
+            1.953,
+            2.54
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 212,
+          "anchor": [
+            1.0288,
+            1.953,
+            -7.73
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 213,
+          "anchor": [
+            10.358,
+            1.953,
+            -9.5419
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 214,
+          "anchor": [
+            20.515,
+            1.953,
+            -5.272
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 215,
+          "anchor": [
+            20.515,
+            1.953,
+            2.449
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 216,
+          "anchor": [
+            12.52,
+            1.953,
+            6.1973
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 217,
+          "anchor": [
+            9.3338,
+            1.953,
+            13.62
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 218,
+          "anchor": [
+            -2.7829,
+            1.953,
+            11.785
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 219,
+          "anchor": [
+            -0.62978,
+            1.953,
+            6.1973
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 220,
+          "anchor": [
+            4.5667,
+            1.953,
+            0.18074
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 221,
+          "anchor": [
+            -8.8762,
+            -5.36,
+            -0.587
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 222,
+          "anchor": [
+            -12.708,
+            -5.36,
+            8.9735
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 223,
+          "anchor": [
+            -5.9349,
+            -5.36,
+            12.801
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 224,
+          "anchor": [
+            5.8259,
+            -5.36,
+            12.801
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 225,
+          "anchor": [
+            2.7197,
+            -5.36,
+            8.9735
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 226,
+          "anchor": [
+            -0.00214,
+            -5.36,
+            14.378
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 227,
+          "anchor": [
+            -6.8753,
+            -5.36,
+            6.9878
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 228,
+          "anchor": [
+            -1.4077,
+            -5.36,
+            0.63798
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 229,
+          "anchor": [
+            0.65453,
+            -5.36,
+            11.373
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 230,
+          "anchor": [
+            10.702,
+            -5.36,
+            10.38
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 231,
+          "anchor": [
+            19.726,
+            -5.36,
+            -2.646
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 232,
+          "anchor": [
+            28.046,
+            -5.36,
+            -9.608
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 1
+        },
+        {
+          "id": 233,
+          "anchor": [
+            29.407,
+            -5.36,
+            -0.29367
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 234,
+          "anchor": [
+            8.0721,
+            -5.36,
+            -1.182
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 235,
+          "anchor": [
+            -2.097,
+            -5.36,
+            -7.7971
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        }
+      ]
+    },
+    "4": {
+      "scene": "level05_jpn",
+      "bundle": "a88f202458716efb88abd0a361b1f073.unity3d",
+      "boards": [
+        {
+          "id": 224,
+          "anchor": [
+            11.338,
+            0.05,
+            19.81845
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": -4517012917690429818,
+          "block_type": 0,
+          "profile": "wide_door",
+          "init_state": 2
+        },
+        {
+          "id": 225,
+          "anchor": [
+            -1.4395,
+            0.05,
+            17.538
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 226,
+          "anchor": [
+            -3.22,
+            0.05,
+            12.545
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 227,
+          "anchor": [
+            -0.73514,
+            0.05,
+            2.6183
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 228,
+          "anchor": [
+            -6.257,
+            0.05,
+            -9.3474
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 229,
+          "anchor": [
+            1.3337,
+            0.05,
+            -9.3474
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 230,
+          "anchor": [
+            14.266,
+            0.05,
+            6.2001
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 231,
+          "anchor": [
+            7.5009,
+            0.05,
+            -0.22138
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 232,
+          "anchor": [
+            14.833,
+            0.05,
+            -9.3474
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 233,
+          "anchor": [
+            16.582,
+            0.05,
+            -11.359
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 234,
+          "anchor": [
+            22.87,
+            0.05,
+            -15.085
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 235,
+          "anchor": [
+            20.801,
+            0.05,
+            -9.3492
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 236,
+          "anchor": [
+            16.582,
+            0.05,
+            -1.645
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 237,
+          "anchor": [
+            18.046,
+            0.05,
+            6.2001
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 238,
+          "anchor": [
+            21.272,
+            0.05,
+            7.9788
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 239,
+          "anchor": [
+            19.545,
+            0.05,
+            9.7575
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 240,
+          "anchor": [
+            9.8423,
+            0.05,
+            9.7575
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 241,
+          "anchor": [
+            13.445,
+            0.05,
+            12.048
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 242,
+          "anchor": [
+            5.7943,
+            0.05,
+            -7.7246
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 243,
+          "anchor": [
+            -16.009,
+            0.05,
+            -20.381
+          ],
+          "yaw_deg": -90.00001,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 2
+        },
+        {
+          "id": 244,
+          "anchor": [
+            1.3527,
+            0.05,
+            -19.293
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 2
+        },
+        {
+          "id": 245,
+          "anchor": [
+            -13.35,
+            -0.0184,
+            17.837
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 1
+        },
+        {
+          "id": 246,
+          "anchor": [
+            27.856,
+            -0.0184,
+            11.852
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 247,
+          "anchor": [
+            9.6789,
+            0.017,
+            -12.961
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": -6910248425299595202,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 0
+        },
+        {
+          "id": 248,
+          "anchor": [
+            9.6789,
+            0.017,
+            -15.52
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": -6910248425299595202,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 0
+        },
+        {
+          "id": 249,
+          "anchor": [
+            -1.4309,
+            4.7,
+            -1.0076
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 250,
+          "anchor": [
+            -8.7821,
+            4.7,
+            3.0917
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 251,
+          "anchor": [
+            -1.4309,
+            4.7,
+            4.83091
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 252,
+          "anchor": [
+            -1.4309,
+            4.7,
+            13.00201
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 253,
+          "anchor": [
+            13.852,
+            4.7,
+            -4.9283
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 254,
+          "anchor": [
+            8.4003,
+            4.7,
+            6.20011
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 255,
+          "anchor": [
+            13.144,
+            4.7,
+            7.99631
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 256,
+          "anchor": [
+            21.67701,
+            4.7,
+            11.72701
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 257,
+          "anchor": [
+            2.8914,
+            4.7,
+            -10.921
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 2980822290096147547,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 0
+        },
+        {
+          "id": 258,
+          "anchor": [
+            20.01301,
+            4.7,
+            17.46601
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 1
+        },
+        {
+          "id": 259,
+          "anchor": [
+            28.90101,
+            4.7,
+            -9.4865
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 2
+        },
+        {
+          "id": 260,
+          "anchor": [
+            -7.8006,
+            4.7,
+            -20.869
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 4537311219457653690,
+          "block_type": 2,
+          "profile": "narrow_door",
+          "init_state": 2
+        },
+        {
+          "id": 261,
+          "anchor": [
+            11.762,
+            4.7,
+            -9.34705
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": -4231871646099518834,
+          "block_type": 0,
+          "profile": "wide_door",
+          "init_state": 0
+        },
+        {
+          "id": 262,
+          "anchor": [
+            -13.35,
+            4.6316,
+            -1.0605
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 1
+        },
+        {
+          "id": 263,
+          "anchor": [
+            -13.35,
+            4.6316,
+            10.61301
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 1
+        },
+        {
+          "id": 264,
+          "anchor": [
+            9.0638,
+            4.6316,
+            17.466
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 265,
+          "anchor": [
+            31.39301,
+            4.6316,
+            3.50061
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 266,
+          "anchor": [
+            17.76301,
+            4.6316,
+            -19.223
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 267,
+          "anchor": [
+            -6.6003,
+            4.6316,
+            -19.223
+          ],
+          "yaw_deg": 180.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        },
+        {
+          "id": 268,
+          "anchor": [
+            -4.5491,
+            4.6316,
+            -19.223
+          ],
+          "yaw_deg": 0.0,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 1
+        },
+        {
+          "id": 269,
+          "anchor": [
+            -3.145,
+            4.6316,
+            6.52521
+          ],
+          "yaw_deg": 179.99998,
+          "cfg_path_id": -6910248425299595202,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 0
+        },
+        {
+          "id": 270,
+          "anchor": [
+            -13.3506,
+            4.6316,
+            17.468
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 1
+        },
+        {
+          "id": 271,
+          "anchor": [
+            31.38941,
+            4.6316,
+            14.946
+          ],
+          "yaw_deg": 90.00001,
+          "cfg_path_id": 11165498328851644,
+          "block_type": 3,
+          "profile": "narrow_window",
+          "init_state": 2
+        }
+      ]
+    }
+  }
+}

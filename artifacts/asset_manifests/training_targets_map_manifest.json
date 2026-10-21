@@ -1,0 +1,342 @@
+{
+  "schema_version": 3,
+  "generated_at_utc": "2026-05-29T10:20:00+00:00",
+  "source": {
+    "scene_bundle_map": "decrypted_UnityAssets/prepared_assets/reports/scene_bundle_map.tsv",
+    "asset_bundles_root": "decrypted_UnityAssets/prepared_assets/AssetBundles",
+    "training_prefab_bundle": "9f39889529dedadaaf017e7bb181fcd7.unity3d",
+    "training_prefab_path": "assets/rawresources/abresources/battle/map/level02_can/training_mode.prefab",
+    "position_hint_bundle": "4001839f43e3ba8b935ece9c542c1ae4.unity3d",
+    "position_hint_prefab_path": "assets/rawresources/abresources/scenes/level02_can/level02_can.unity",
+    "selection_rule": "Environment/Dynamic/SpawnPoints/spawn_probes/red/eliminate/zhandouquyu*/ID* world positions from level scene",
+    "position_rule": "world transform position of eliminate spawn-probes; content alternates shoot_target_high(8)/shoot_target_low(9) per region pattern"
+  },
+  "maps": {
+    "1": {
+      "scene": "level02_can",
+      "bundle": "4001839f43e3ba8b935ece9c542c1ae4.unity3d",
+      "targets": [
+        {
+          "id": 1101,
+          "position": [
+            6.39,
+            1.459,
+            -4.682
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 8,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu1_id1"
+        },
+        {
+          "id": 1102,
+          "position": [
+            4.88,
+            1.459,
+            -10.16
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 9,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu1_id2"
+        },
+        {
+          "id": 1103,
+          "position": [
+            7.081,
+            1.459,
+            -6.96
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 8,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu1_id3"
+        },
+        {
+          "id": 1104,
+          "position": [
+            2.578,
+            1.459,
+            -10.965
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 9,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu1_id4"
+        },
+        {
+          "id": 1105,
+          "position": [
+            -0.447,
+            1.459,
+            -4.964
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 8,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu1_id5"
+        },
+        {
+          "id": 1201,
+          "position": [
+            -9.319,
+            -6.966,
+            7.512
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 9,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu2_id31"
+        },
+        {
+          "id": 1202,
+          "position": [
+            -5.291,
+            -6.966,
+            10.517
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 8,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu2_id32"
+        },
+        {
+          "id": 1203,
+          "position": [
+            -0.039,
+            -6.966,
+            9.379
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 9,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu2_id33"
+        },
+        {
+          "id": 1204,
+          "position": [
+            -4.98,
+            -6.966,
+            3.44
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 8,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu2_id34"
+        },
+        {
+          "id": 1205,
+          "position": [
+            -3.182,
+            -6.966,
+            10.117
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 9,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu2_id35"
+        },
+        {
+          "id": 1301,
+          "position": [
+            -2.22,
+            5.117,
+            -3.944
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 8,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu3_id11"
+        },
+        {
+          "id": 1302,
+          "position": [
+            3.426,
+            5.117,
+            -5.857
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 9,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu3_id12"
+        },
+        {
+          "id": 1303,
+          "position": [
+            0.56,
+            5.117,
+            -9.9
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 8,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu3_id13"
+        },
+        {
+          "id": 1304,
+          "position": [
+            1.734,
+            5.117,
+            -4.394
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 9,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu3_id14"
+        },
+        {
+          "id": 1305,
+          "position": [
+            2.93,
+            5.117,
+            -8.64
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 8,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu3_id15"
+        },
+        {
+          "id": 1401,
+          "position": [
+            -0.267,
+            -2.196,
+            -2.687
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 9,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu4_id21"
+        },
+        {
+          "id": 1402,
+          "position": [
+            4.254,
+            -2.196,
+            -1.418
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 8,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu4_id22"
+        },
+        {
+          "id": 1403,
+          "position": [
+            1.331,
+            -2.196,
+            -1.183
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 9,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu4_id23"
+        },
+        {
+          "id": 1404,
+          "position": [
+            6.454,
+            -2.196,
+            -8.438
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 8,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu4_id24"
+        },
+        {
+          "id": 1405,
+          "position": [
+            4.468,
+            -2.196,
+            -9.038
+          ],
+          "euler": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "content_config_id": 9,
+          "scene_uid_kind": 34,
+          "name": "can_training_target_zhandouquyu4_id25"
+        }
+      ]
+    }
+  }
+}

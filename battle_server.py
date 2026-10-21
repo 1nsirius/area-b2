@@ -34,6 +34,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+# A callback invoked when a round transitions to the next round, so the lobby server can push updated RspBattleInfo.
+# Signature: def callback(battle_id: int, round_num: int, winner_camp: int, attacker_score: int, defender_score: int)
+ON_ROUND_END_CALLBACK: Callable[..., None] | None = None
+
 from battle_parser_framework import (
     BattlePacketRuntime,
     PacketDescriptor,
@@ -49,6 +53,17 @@ from battle_payload_decoders_autogen import (
     BATTLE_PAYLOAD_DECODER_SUPPORTED_CLASSES,
     decode_battle_payload_autogen,
     is_payload_decoder_supported,
+)
+from services.battle_destruction import (
+    DestructionEngine,
+    decode_unique_id,
+    encode_unique_id,
+    WALL_ENTRY_KINDS,
+    TARGET_ENTRY_KINDS,
+    get_barricade_hit_cluster,
+    calculate_wall_blocks_in_radius,
+    raycast_wall,
+    get_wall_asset_blocks,
 )
 
 
@@ -90,6 +105,7 @@ BLOCKING_BOARD_WINDOW_PROFILE = BlockingBoardProfile(
 )
 BLOCKING_BOARD_WIDE_DOOR_PROFILE = BlockingBoardProfile(
     name='wide_door',
+    cols=5,
     half_height=0.58,
     local_x_gain=1.22,
 )
@@ -544,6 +560,7 @@ PKT_RSP_EVENT_BLOCKING_BOARD_CONTENT_DESTROY = 0x2F   # 47
 PKT_RSP_EVENT_BLOCKING_BOARD_DESTROY     = PKT_RSP_EVENT_BLOCKING_BOARD_CONTENT_DESTROY
 PKT_RSP_EVENT_BLOCKING_BOARD_STATE       = 0x30   # 48
 PKT_REQ_CHANGE_BLOCKING_BOARD_STATE      = 0x31   # 49
+PKT_RSP_EVENT_PILLAR_SEGMENTS_DESTROY    = 0x34   # 52
 PKT_RSP_DYNAMIC_BLOCK_BREAK_STATE        = 0x7F   # 127
 PKT_REQ_CHARACTER_ACTION_AIMING          = 0x3F   # 63
 PKT_RSP_CHARACTER_ACTION_AIMING          = 0x40   # 64
@@ -568,18 +585,22 @@ PKT_REQ_SWITCH_UNMANNED_VEHICLE_TO_CHARACTER = 0x61  # 97
 PKT_RSP_SWITCH_UNMANNED_VEHICLE_FAILED   = 0x64   # 100
 PKT_REQ_MONITOR_SCAN_ENEMIES             = 0x65   # 101
 PKT_RSP_MONITOR_SCAN_ENEMIES             = 0x66   # 102
+PKT_RSP_MONITOR_DEAD                     = 0x67   # 103
 PKT_REQ_SWITCH_MONITOR_TO_CHARACTER      = 0x68   # 104
 PKT_REQ_SWITCH_CURRENT_MONITOR           = 0x69   # 105
 PKT_RSP_SWITCH_CURRENT_MONITOR_FAILED    = 0x6A   # 106
 PKT_RSP_UPDATE_MONITOR_STATE             = 0x6B   # 107
 PKT_REQ_MONITOR_POSE_DELTA               = 0x6C   # 108
 PKT_RSP_MONITOR_POSE_DELTA               = 0x6D   # 109
+PKT_RSP_CRITICAL_PROGRESS                = 0x6E   # 110
 PKT_REQ_FOUND_CRITICAL_TARGET            = 0x6F   # 111
 PKT_RSP_FOUND_CRITICAL_TARGET            = 0x70   # 112
+PKT_RSP_CRITICAL_PROGRESS_NOTIFY         = 0x72   # 114
 PKT_REQ_CHARACTER_CLIMB_LADDER           = 0x73   # 115
 PKT_RSP_CHARACTER_CLIMB_LADDER           = 0x74   # 116
 PKT_REQ_CHARACTER_LEAVE_LADDER           = 0x75   # 117
 PKT_RSP_CHARACTER_LEAVE_LADDER           = 0x76   # 118
+PKT_RSP_BATTLE_ROUND_RESULT              = 0x7B   # 123
 PKT_REQ_BOMB_GUN_FIRE                    = 0x80   # 128
 PKT_RSP_BOMB_GUN_FIRE_RESULT             = 0x81   # 129
 PKT_REQ_BOMB_BULLET_STATE                = 0x83   # 131
@@ -602,6 +623,7 @@ PKT_RSP_TRAP_BOMB_INSTALLED              = 0xA3   # 163
 PKT_REQ_CHARACTER_ACTION_UNINSTALL_TRAP_BOMB = 0xA4   # 164
 PKT_RSP_CHARACTER_ACTION_UNINSTALL_TRAP_BOMB = 0xA5   # 165
 PKT_REQ_TRAP_BOMB_UNINSTALLED            = 0xA6   # 166
+PKT_RSP_ROUND_POINTS                      = 0xDF   # 223
 
 VEHICLE_RELATION_OPERATOR                = 1
 VEHICLE_RELATION_WATCHER                 = 2
@@ -671,6 +693,8 @@ PKT_RSP_TARGET_MODEL_START_RUN            = 0x262  # 610
 PKT_RSP_TARGET_MODEL_DESTROY              = 0x263  # 611
 PKT_RSP_TARGET_MODEL_RELIVE               = 0x264  # 612
 PKT_RSP_CREATE_ENTITY                     = 0x26C  # 620
+PKT_RSP_PLAYER_RELIVE                     = 0xED   # 237
+PKT_RSP_RESET_ALL_WEAPON_ITEM_NUM         = 0xF4251 # 1000017
 
 PKT_REQ_DESTROY_BLOCKING_BOARD            = 0x1C5  # 453
 PKT_RSP_DESTROY_BLOCKING_BOARD            = 0x1C6  # 454
@@ -788,11 +812,29 @@ BATTLE_OVER_REASON_SELF_LEAVE   = 4
 BATTLE_OVER_REASON_RESTART_MODE = 5
 BATTLE_OVER_REASON_RELOAD_MAP   = 6
 
+# proto.common.BattleGameOverReason enum (u8) — used in RspBattleRoundResult and RspBattleResult
+ROUND_END_REASON_ATTACKER_KILL_DEFENDER = 0
+ROUND_END_REASON_DEFENDER_KILL_ATTACKER = 1
+ROUND_END_REASON_CRITICAL_SUCCESS       = 2
+ROUND_END_REASON_TIMEOUT                = 3
+ROUND_END_REASON_SELF_LEAVE             = 4
+ROUND_END_REASON_RESTART_MODE           = 5
+ROUND_END_REASON_RELOAD_MAP             = 6
+ROUND_END_REASON_DEFUSER_TIMEOUT        = 7
+ROUND_END_REASON_DEFUSER_CRACKED        = 8
+ROUND_END_REASON_DEFUSER_DESTROYED      = 9
+ROUND_END_REASON_BOMB_TIMEOUT           = 10
+
 # proto.common.CriticalRegionState enum (u8)
 CRITICAL_REGION_STATE_NONE_PLAYERS   = 0
 CRITICAL_REGION_STATE_ONLY_ATTACKERS = 1
 CRITICAL_REGION_STATE_ONLY_DEFENDERS = 2
 CRITICAL_REGION_STATE_BOTH_PLAYERS   = 3
+
+# proto.common.CriticalProgressState enum (u8)
+CRITICAL_PROGRESS_STATE_UP   = 1
+CRITICAL_PROGRESS_STATE_DOWN = 2
+CRITICAL_PROGRESS_STATE_STAY = 3
 
 # proto.common.BattleCamp enum (u8)
 BATTLE_CAMP_NO_CAMP  = 0
@@ -849,6 +891,11 @@ SCENE_TOOL_DELETE_KIND_TAKE_BACK = 2
 SCENE_TOOL_DELETE_KIND_USED = 3
 SCENE_TOOL_DELETE_KIND_TIME_OUT = 4
 SCENE_TOOL_DELETE_KIND_DIRECT_DELETE = 5
+
+# proto.common.EntryType subset for scene tools (u16)
+ENTRY_TYPE_EXPLOSIVE = 7        # Breach charge
+ENTRY_TYPE_REMOTE_BOMB = 18     # C4
+ENTRY_TYPE_THERMITE_BOMB = 24   # Thermite
 
 # Game.UniqueId.UniqueIdHelper kind subset used in scene-destroy flows.
 UNIQUE_ID_KIND_WALL = 4
@@ -1058,6 +1105,12 @@ def _load_blocking_board_map_seed_cache() -> dict[int, list[dict[str, object]]]:
                     if profile_name is not None:
                         row['profile'] = profile_name
 
+                    if 'init_state' in raw_row:
+                        try:
+                            row['init_state'] = int(raw_row['init_state']) & 0xFF
+                        except Exception:
+                            pass
+
                     try:
                         yaw = float(raw_row.get('yaw_deg'))
                         if math.isfinite(yaw):
@@ -1071,8 +1124,28 @@ def _load_blocking_board_map_seed_cache() -> dict[int, list[dict[str, object]]]:
                 if rows:
                     parsed[map_id] = rows
 
+        # Alias client map IDs (6=Russia, 7=Japan) to manifest map IDs (3=Russia, 4=Japan)
+        if 3 in parsed and 6 not in parsed:
+            parsed[6] = parsed[3]
+        if 4 in parsed and 7 not in parsed:
+            parsed[7] = parsed[4]
+
         _BLOCKING_BOARD_MAP_SEED_CACHE = parsed
         return _BLOCKING_BOARD_MAP_SEED_CACHE
+
+
+def _normalize_manifest_map_id(map_id: int) -> int:
+    try:
+        mid = int(map_id)
+    except Exception:
+        return 1
+    if mid == 6:
+        return 3  # Russia manifest
+    if mid == 7:
+        return 4  # Japan manifest
+    if mid == 3:
+        return 0  # Tutorial manifest
+    return mid
 
 
 def _get_blocking_board_seed_entries_for_map(map_id: int) -> list[dict[str, object]]:
@@ -1082,7 +1155,213 @@ def _get_blocking_board_seed_entries_for_map(map_id: int) -> list[dict[str, obje
         return []
     if normalized_map_id <= 0:
         return []
-    return _load_blocking_board_map_seed_cache().get(normalized_map_id, [])
+    cache = _load_blocking_board_map_seed_cache()
+    entries = cache.get(normalized_map_id)
+    if not entries:
+        entries = cache.get(_normalize_manifest_map_id(normalized_map_id), [])
+    return entries or []
+
+
+WALLS_MAP_MANIFEST_DEFAULT_PATH = os.path.join(
+    'artifacts',
+    'asset_manifests',
+    'unified_scene_wall_manifest.json',
+)
+_WALLS_MAP_SEED_CACHE: dict[int, list[dict[str, object]]] | None = None
+_WALLS_MAP_SEED_CACHE_LOCK = threading.Lock()
+
+
+def _resolve_walls_map_manifest_path() -> Path:
+    raw_path = str(
+        os.getenv(
+            'WALLS_MAP_MANIFEST_PATH',
+            WALLS_MAP_MANIFEST_DEFAULT_PATH,
+        )
+        or WALLS_MAP_MANIFEST_DEFAULT_PATH
+    ).strip()
+    if not raw_path:
+        raw_path = WALLS_MAP_MANIFEST_DEFAULT_PATH
+    manifest_path = Path(raw_path)
+    if not manifest_path.is_absolute():
+        manifest_path = Path(__file__).resolve().parent / manifest_path
+    return manifest_path
+
+
+def _load_wall_map_seed_cache() -> dict[int, list[dict[str, object]]]:
+    global _WALLS_MAP_SEED_CACHE
+
+    with _WALLS_MAP_SEED_CACHE_LOCK:
+        if _WALLS_MAP_SEED_CACHE is not None:
+            return _WALLS_MAP_SEED_CACHE
+
+        manifest_path = _resolve_walls_map_manifest_path()
+        if not manifest_path.exists():
+            alt_path = Path(__file__).resolve().parent / 'artifacts' / 'asset_manifests' / 'walls_map_manifest.json'
+            if alt_path.exists():
+                manifest_path = alt_path
+
+        try:
+            payload = json.loads(manifest_path.read_text(encoding='utf-8'))
+        except Exception:
+            _WALLS_MAP_SEED_CACHE = {}
+            return _WALLS_MAP_SEED_CACHE
+
+        parsed: dict[int, list[dict[str, object]]] = {}
+
+        # ─────────────────────────────────────────────────────────────────
+        # Unified Scene Wall Manifest format (top level keys '0', '1', '2', '3', '4')
+        # ─────────────────────────────────────────────────────────────────
+        if isinstance(payload, dict) and ('1' in payload or 1 in payload or '0' in payload) and 'maps' not in payload:
+            for raw_map_id, map_desc in payload.items():
+                try:
+                    map_id = int(raw_map_id)
+                except Exception:
+                    continue
+                if not isinstance(map_desc, dict):
+                    continue
+                walls_dict = map_desc.get('walls')
+                if not isinstance(walls_dict, dict):
+                    continue
+
+                rows: list[dict[str, object]] = []
+                seen_ids: set[int] = set()
+                for wid_str, w in walls_dict.items():
+                    if not isinstance(w, dict):
+                        continue
+                    try:
+                        wall_id = int(w.get('wall_id', wid_str) or 0) & 0xFFFFFFFF
+                    except Exception:
+                        continue
+                    if wall_id <= 0 or wall_id in seen_ids:
+                        continue
+
+                    anchor_raw = w.get('anchor')
+                    anchor = (0.0, 0.0, 0.0)
+                    if isinstance(anchor_raw, (list, tuple)) and len(anchor_raw) >= 3:
+                        anchor = (
+                            float(anchor_raw[0]),
+                            float(anchor_raw[1]),
+                            float(anchor_raw[2]),
+                        )
+
+                    wall_type = int(w.get('wall_type', 2))
+                    go_name = str(w.get('go_name', ''))
+                    asset_name = str(w.get('asset_name', ''))
+                    is_floor = (wall_type == 1)
+                    is_hatch = (
+                        wall_type == 3
+                        or 'hatch' in go_name.lower()
+                        or 'lockfloor' in go_name.lower()
+                        or 'hatch' in asset_name.lower()
+                        or 'lockfloor' in asset_name.lower()
+                    )
+
+                    row: dict[str, object] = {
+                        'id': wall_id,
+                        'name': asset_name or go_name,
+                        'go_name': go_name,
+                        'asset_name': asset_name,
+                        'anchor': anchor,
+                        'yaw_deg': 0.0,
+                        'is_floor': is_floor,
+                        'is_hatch': is_hatch,
+                        'wall_type': wall_type,
+                        'size': w.get('size', {'x': 2.5, 'y': 3.25, 'z': 0.18}),
+                        'normal': tuple(w.get('normal', (0.0, 0.0, 1.0))),
+                        'up': tuple(w.get('up', (0.0, 1.0, 0.0))),
+                        'right': tuple(w.get('right', (1.0, 0.0, 0.0))),
+                        'world_to_local_matrix': w.get('world_to_local_matrix'),
+                        'local_to_world_matrix': w.get('local_to_world_matrix'),
+                        'blocks': w.get('blocks', []),
+                        'double_edge': bool(w.get('double_edge', False)),
+                        'double_edge_thickness': float(w.get('double_edge_thickness', 0.02)),
+                        'faces_flag': int(w.get('faces_flag', 3)),
+                        'attack_config_id': int(w.get('attack_config_id', 2)),
+                        'pillar_group_id': w.get('pillar_group_id'),
+                    }
+                    rows.append(row)
+                    seen_ids.add(wall_id)
+
+                if rows:
+                    parsed[map_id] = rows
+
+        # ─────────────────────────────────────────────────────────────────
+        # Legacy walls_map_manifest.json format fallback
+        # ─────────────────────────────────────────────────────────────────
+        maps = payload.get('maps') if isinstance(payload, dict) else None
+        if isinstance(maps, dict) and not parsed:
+            for raw_map_id, map_desc in maps.items():
+                try:
+                    map_id = int(raw_map_id)
+                except Exception:
+                    continue
+                if not isinstance(map_desc, dict):
+                    continue
+
+                walls_raw = map_desc.get('walls')
+                if not isinstance(walls_raw, list):
+                    continue
+
+                rows: list[dict[str, object]] = []
+                seen_ids: set[int] = set()
+                for raw_row in walls_raw:
+                    if not isinstance(raw_row, dict):
+                        continue
+                    try:
+                        wall_id = int(raw_row.get('id', 0) or 0) & 0xFFFFFFFF
+                    except Exception:
+                        continue
+                    if wall_id <= 0 or wall_id in seen_ids:
+                        continue
+                    anchor_raw = raw_row.get('anchor')
+                    if not isinstance(anchor_raw, (list, tuple)) or len(anchor_raw) < 3:
+                        continue
+                    try:
+                        anchor = (
+                            float(anchor_raw[0]),
+                            float(anchor_raw[1]),
+                            float(anchor_raw[2]),
+                        )
+                    except Exception:
+                        continue
+                    row: dict[str, object] = {
+                        'id': wall_id,
+                        'name': str(raw_row.get('name', '')),
+                        'anchor': anchor,
+                        'yaw_deg': float(raw_row.get('yaw_deg', 0.0)),
+                        'is_floor': bool(raw_row.get('is_floor', False)),
+                        'is_hatch': bool(raw_row.get('is_hatch', False)),
+                        'attack_config_id': int(raw_row.get('attack_config_id', 0)),
+                    }
+                    rows.append(row)
+                    seen_ids.add(wall_id)
+
+                if rows:
+                    parsed[map_id] = rows
+
+        # Alias client map IDs (6=Russia, 7=Japan) to manifest map IDs (3=Russia, 4=Japan)
+        if 3 in parsed and 6 not in parsed:
+            parsed[6] = parsed[3]
+        if 4 in parsed and 7 not in parsed:
+            parsed[7] = parsed[4]
+
+        _WALLS_MAP_SEED_CACHE = parsed
+        return _WALLS_MAP_SEED_CACHE
+
+
+def _get_wall_seed_entries_for_map(map_id: int) -> list[dict[str, object]]:
+    try:
+        normalized_map_id = int(map_id)
+    except Exception:
+        return []
+    if normalized_map_id <= 0:
+        return []
+    cache = _load_wall_map_seed_cache()
+    entries = cache.get(normalized_map_id)
+    if not entries:
+        entries = cache.get(_normalize_manifest_map_id(normalized_map_id), [])
+    return entries or []
+
 
 
 def _resolve_training_target_map_manifest_path() -> Path:
@@ -1662,7 +1941,7 @@ def _uniq_positive_ints(values: list[int]) -> list[int]:
     return out
 
 
-def _load_character_default_skills_cache() -> dict[int, dict[str, list[int]]]:
+def _load_character_default_skills_cache() -> dict[int, dict[str, object]]:
     global _CHARACTER_DEFAULT_SKILLS_CACHE
 
     with _CHARACTER_DEFAULT_SKILLS_CACHE_LOCK:
@@ -1676,10 +1955,13 @@ def _load_character_default_skills_cache() -> dict[int, dict[str, list[int]]]:
             _CHARACTER_DEFAULT_SKILLS_CACHE = {}
             return _CHARACTER_DEFAULT_SKILLS_CACHE
 
-        parsed: dict[int, dict[str, list[int]]] = {}
+        parsed: dict[int, dict[str, object]] = {}
         in_entry = False
         entry_depth = 0
         current_char_id = 0
+        current_camp = 1
+        current_pri: list[int] = []
+        current_sec: list[int] = []
         current_main: list[int] = []
         current_sub: list[int] = []
         capture_field: str | None = None
@@ -1693,6 +1975,9 @@ def _load_character_default_skills_cache() -> dict[int, dict[str, list[int]]]:
                         current_char_id = int(open_match.group(1))
                     except Exception:
                         current_char_id = 0
+                    current_camp = 1
+                    current_pri = []
+                    current_sec = []
                     current_main = []
                     current_sub = []
                     capture_field = None
@@ -1703,9 +1988,22 @@ def _load_character_default_skills_cache() -> dict[int, dict[str, list[int]]]:
                         in_entry = False
                 continue
 
+            m_camp = re.search(r'\bcamp\s*=\s*(-?\d+)', raw_line)
+            if m_camp:
+                try:
+                    c_val = int(m_camp.group(1))
+                    if c_val in (1, 2):
+                        current_camp = c_val
+                except Exception:
+                    pass
+
             if capture_field is not None:
                 raw_numbers = re.findall(r'-?\d+', raw_line)
-                if capture_field == 'main_skill':
+                if capture_field == 'primary_weapon':
+                    current_pri.extend(int(token) for token in raw_numbers)
+                elif capture_field == 'secondary_weapon':
+                    current_sec.extend(int(token) for token in raw_numbers)
+                elif capture_field == 'main_skill':
                     current_main.extend(int(token) for token in raw_numbers)
                 elif capture_field == 'sub_skills':
                     current_sub.extend(int(token) for token in raw_numbers)
@@ -1714,18 +2012,22 @@ def _load_character_default_skills_cache() -> dict[int, dict[str, list[int]]]:
                     capture_field = None
                     capture_depth = 0
             else:
-                inline_match = _CHARACTER_TABLE_ARRAY_INLINE_RE.match(raw_line)
-                if inline_match:
-                    field_name = inline_match.group(1)
-                    raw_numbers = re.findall(r'-?\d+', inline_match.group(2))
-                    if field_name == 'main_skill':
+                m_arr_inline = re.search(r'^\s*(primary_weapon|secondary_weapon|main_skill|sub_skills)\s*=\s*\{\s*([^}]*)\s*\}\s*,\s*$', raw_line)
+                if m_arr_inline:
+                    field_name = m_arr_inline.group(1)
+                    raw_numbers = re.findall(r'-?\d+', m_arr_inline.group(2))
+                    if field_name == 'primary_weapon':
+                        current_pri.extend(int(token) for token in raw_numbers)
+                    elif field_name == 'secondary_weapon':
+                        current_sec.extend(int(token) for token in raw_numbers)
+                    elif field_name == 'main_skill':
                         current_main.extend(int(token) for token in raw_numbers)
                     else:
                         current_sub.extend(int(token) for token in raw_numbers)
                 else:
-                    open_array_match = _CHARACTER_TABLE_ARRAY_OPEN_RE.match(raw_line)
-                    if open_array_match:
-                        capture_field = open_array_match.group(1)
+                    m_arr_open = re.search(r'^\s*(primary_weapon|secondary_weapon|main_skill|sub_skills)\s*=\s*\{\s*$', raw_line)
+                    if m_arr_open:
+                        capture_field = m_arr_open.group(1)
                         capture_depth = raw_line.count('{') - raw_line.count('}')
                         if capture_depth <= 0:
                             capture_field = None
@@ -1734,13 +2036,30 @@ def _load_character_default_skills_cache() -> dict[int, dict[str, list[int]]]:
             entry_depth += raw_line.count('{') - raw_line.count('}')
             if entry_depth <= 0:
                 if current_char_id > 0:
+                    pri_list = _uniq_positive_ints(current_pri)
+                    sec_list = _uniq_positive_ints(current_sec)
+                    main_list = _uniq_positive_ints(current_main)
+                    sub_list = _uniq_positive_ints(current_sub)
+                    def_pri = pri_list[0] if pri_list else (10026 if current_camp == 2 else 10036)
+                    def_sec = sec_list[0] if sec_list else 10074
+                    def_main = main_list[0] if main_list else (195 if current_camp == 2 else 295)
+                    def_sub = sub_list[0] if sub_list else (197 if current_camp == 2 else 299)
                     parsed[current_char_id] = {
-                        'main_skill': _uniq_positive_ints(current_main),
-                        'sub_skills': _uniq_positive_ints(current_sub),
+                        'camp': current_camp,
+                        'primary_weapon': def_pri,
+                        'secondary_weapon': def_sec,
+                        'main_skill_id': def_main,
+                        'sub_skill_id': def_sub,
+                        'main_skill': main_list,
+                        'sub_skills': sub_list,
+                        'primary_weapons': pri_list,
+                        'secondary_weapons': sec_list,
                     }
                 in_entry = False
                 entry_depth = 0
                 current_char_id = 0
+                current_pri = []
+                current_sec = []
                 current_main = []
                 current_sub = []
                 capture_field = None
@@ -1748,6 +2067,59 @@ def _load_character_default_skills_cache() -> dict[int, dict[str, list[int]]]:
 
         _CHARACTER_DEFAULT_SKILLS_CACHE = parsed
         return _CHARACTER_DEFAULT_SKILLS_CACHE
+
+
+def _get_character_default_loadout(character_id: int, camp: int = 1) -> dict[str, int]:
+    try:
+        cid = int(character_id)
+    except Exception:
+        cid = 0
+    camp_val = int(camp) if camp in (1, 2) else 1
+    row = _load_character_default_skills_cache().get(cid)
+    if isinstance(row, dict):
+        return {
+            'primary_weapon': int(row.get('primary_weapon') or (10026 if camp_val == 2 else 10036)),
+            'secondary_weapon': int(row.get('secondary_weapon') or 10074),
+            'main_skill_id': int(row.get('main_skill_id') or (195 if camp_val == 2 else 295)),
+            'sub_skill_id': int(row.get('sub_skill_id') or (197 if camp_val == 2 else 299)),
+        }
+    return {
+        'primary_weapon': 10026 if camp_val == 2 else 10036,
+        'secondary_weapon': 10074,
+        'main_skill_id': 195 if camp_val == 2 else 295,
+        'sub_skill_id': 197 if camp_val == 2 else 299,
+    }
+
+
+def _get_character_allowed_loadout(character_id: int, camp: int = 1) -> dict[str, list[int]]:
+    """Return all allowed weapon/skill IDs for the given character (from character.lua).
+
+    Used in build_room_loading to sanitize player loadouts before sending
+    RspRoomLoading, preventing invalid weapon/skin combos that crash the client
+    preloader coroutine and leave clients stuck at 97-100% on the loading screen.
+    """
+    try:
+        cid = int(character_id)
+    except Exception:
+        cid = 0
+    def_loadout = _get_character_default_loadout(cid, camp)
+    row = _load_character_default_skills_cache().get(cid)
+    if isinstance(row, dict):
+        pri_list = [int(x) for x in (row.get('primary_weapons') or []) if int(x) > 0] or [def_loadout['primary_weapon']]
+        sec_list = [int(x) for x in (row.get('secondary_weapons') or []) if int(x) > 0] or [def_loadout['secondary_weapon']]
+        main_list = [int(x) for x in (row.get('main_skill') or []) if int(x) > 0] or [def_loadout['main_skill_id']]
+        sub_list = [int(x) for x in (row.get('sub_skills') or []) if int(x) > 0] or [def_loadout['sub_skill_id']]
+    else:
+        pri_list = [def_loadout['primary_weapon']]
+        sec_list = [def_loadout['secondary_weapon']]
+        main_list = [def_loadout['main_skill_id']]
+        sub_list = [def_loadout['sub_skill_id']]
+    return {
+        'primary_weapons': pri_list,
+        'secondary_weapons': sec_list,
+        'main_skills': main_list,
+        'sub_skills': sub_list,
+    }
 
 
 def _get_character_default_skill_ids(character_id: int) -> list[int]:
@@ -1810,12 +2182,20 @@ def _session_seed_training_blocking_boards_from_manifest(
 
         session.blocking_board_profiles[board_id] = selected_profile
 
-        session.blocking_board_states[board_id] = BLOCKING_BOARD_SEEDED_DEFAULT_STATE
-        session.blocking_board_hp[board_id] = BLOCKING_BOARD_SEEDED_DEFAULT_HP
+        if not BLOCKING_BOARD_SEEDED_DEFAULT_ACTIVE:
+            init_state = BLOCKING_BOARD_STATE_DEACTIVE
+        elif 'init_state' in row:
+            init_state = int(row['init_state']) & 0xFF
+        else:
+            init_state = BLOCKING_BOARD_SEEDED_DEFAULT_STATE
+
+        is_active = (init_state != BLOCKING_BOARD_STATE_DEACTIVE)
+        session.blocking_board_states[board_id] = init_state
+        session.blocking_board_hp[board_id] = 100.0 if is_active else 0.0
         session.dynamic_walls.setdefault(
             board_id,
             {
-                'state': BLOCKING_BOARD_SEEDED_DEFAULT_STATE,
+                'state': init_state,
                 'blocks': set(),
             },
         )
@@ -1835,6 +2215,29 @@ def _session_seed_training_blocking_boards_from_manifest(
         seeded += 1
 
     return seeded
+
+
+def _session_seed_walls_from_manifest(
+    session: 'BattleSession',
+    map_id: int,
+) -> int:
+    rows = _get_wall_seed_entries_for_map(map_id)
+    if not rows:
+        return 0
+
+    seeded = 0
+    for row in rows:
+        wall_id = int(row.get('id', 0) or 0) & 0xFFFFFFFF
+        if wall_id <= 0:
+            continue
+        anchor = row.get('anchor')
+        if isinstance(anchor, tuple) and len(anchor) >= 3:
+            session.wall_anchors[wall_id] = anchor
+        session.wall_metadata[wall_id] = row
+        session.wall_broken_blocks.setdefault(wall_id, set())
+        seeded += 1
+    return seeded
+
 
 # R6S-style per-plank board layout used for positional block selection.
 #
@@ -1856,27 +2259,24 @@ BLOCKING_BOARD_HALF_WIDTH: float = 0.55
 BLOCKING_BOARD_HALF_HEIGHT: float = 0.60
 # Horizontal bias in board-local X (metres).
 BLOCKING_BOARD_LOCAL_X_BIAS: float = 0.0
-# Horizontal gain applied after bias compensation. Values >1 reduce center
-# dead-zone (easier side-column acquisition) while preserving symmetry.
-BLOCKING_BOARD_LOCAL_X_GAIN: float = 1.22
+# Horizontal gain applied after bias compensation.
+BLOCKING_BOARD_LOCAL_X_GAIN: float = 1.0
 # Vertical bias/gain calibrate board-local Y before row/index mapping.
 BLOCKING_BOARD_LOCAL_Y_BIAS: float = 0.0
 BLOCKING_BOARD_LOCAL_Y_GAIN: float = 1.0
 # Mapping calibration: client matrix uses board numbers top->bottom.
 BLOCKING_BOARD_ROW_TOP_DOWN: bool = True
-# Mapping calibration: mirror horizontal axis so segment #1 is the visual left.
-BLOCKING_BOARD_COL_MIRROR: bool = True
-# Optional side-aware flip: when shot comes from the opposite side of board normal,
-# invert horizontal mapping so visual left/right remains stable from shooter side.
+# Mapping calibration: direct horizontal mapping (left = col 0, center = col 1, right = col 2).
+BLOCKING_BOARD_COL_MIRROR: bool = False
 try:
     BLOCKING_BOARD_COL_MIRROR_FLIP_BY_HIT_SIDE = (
-        str(os.getenv('BLOCKING_BOARD_COL_MIRROR_FLIP_BY_HIT_SIDE', '1') or '1')
+        str(os.getenv('BLOCKING_BOARD_COL_MIRROR_FLIP_BY_HIT_SIDE', '0') or '0')
         .strip()
         .lower()
-        not in {'0', 'false', 'no', 'off'}
+        in {'1', 'true', 'yes', 'on'}
     )
 except Exception:
-    BLOCKING_BOARD_COL_MIRROR_FLIP_BY_HIT_SIDE = True
+    BLOCKING_BOARD_COL_MIRROR_FLIP_BY_HIT_SIDE = False
 # Asset-layout (nearest-center in object-local index space) usually should not
 # flip by hit side; keep this opt-in and separate from grid behavior.
 try:
@@ -1910,23 +2310,22 @@ try:
 except Exception:
     BLOCKING_BOARD_SEQUENTIAL_FALLBACK_WITHOUT_PART_INDEX = True
 try:
-    # Seed entries from map manifests describe anchor slots where a barricade can be
-    # placed; they are not guaranteed to be spawned at round start.
+    # Seed entries from map manifests describe barricades present at round start.
     BLOCKING_BOARD_SEEDED_DEFAULT_ACTIVE = (
-        str(os.getenv('BLOCKING_BOARD_SEEDED_DEFAULT_ACTIVE', '0') or '0')
+        str(os.getenv('BLOCKING_BOARD_SEEDED_DEFAULT_ACTIVE', '1') or '1')
         .strip()
         .lower()
         not in {'0', 'false', 'no', 'off'}
     )
 except Exception:
-    BLOCKING_BOARD_SEEDED_DEFAULT_ACTIVE = False
+    BLOCKING_BOARD_SEEDED_DEFAULT_ACTIVE = True
 BLOCKING_BOARD_SEEDED_DEFAULT_STATE: int = (
     BLOCKING_BOARD_STATE_FORWARD
     if BLOCKING_BOARD_SEEDED_DEFAULT_ACTIVE
     else BLOCKING_BOARD_STATE_DEACTIVE
 )
 BLOCKING_BOARD_SEEDED_DEFAULT_HP: float = (
-    1.0
+    100.0
     if BLOCKING_BOARD_SEEDED_DEFAULT_ACTIVE
     else 0.0
 )
@@ -2008,6 +2407,15 @@ except Exception:
     WALL_RECOVER_PUSH_SNAPSHOT_PACKETS = True
 
 
+def _safe_int(value: object, default: int = 0) -> int:
+    try:
+        if value is None:
+            return int(default)
+        return int(value)
+    except Exception:
+        return int(default)
+
+
 def _coerce_blocking_board_profile(value: object, fallback: BlockingBoardProfile) -> BlockingBoardProfile:
     if isinstance(value, BlockingBoardProfile):
         return value
@@ -2080,6 +2488,44 @@ def _profile_name(profile: BlockingBoardProfile) -> str:
     return profile.name or 'door'
 
 
+import functools
+import dataclasses
+
+@functools.lru_cache(maxsize=16)
+def _get_blocking_board_row_centers(profile_name: str, cols: int, rows: int) -> tuple[tuple[float, tuple[tuple[float, int], ...]], ...] | None:
+    key = _normalize_blocking_board_profile_name(profile_name) or ''
+    centers = _BLOCKING_BOARD_PROFILE_LAYOUT_CENTERS.get(key)
+    if centers is None:
+        alias = _BLOCKING_BOARD_LAYOUT_PROFILE_ALIASES.get(key)
+        if alias is not None:
+            centers = _BLOCKING_BOARD_PROFILE_LAYOUT_CENTERS.get(alias)
+    if centers is None or len(centers) == 0:
+        return None
+
+    pts = [(i, cx, cy) for i, (cx, cy) in enumerate(centers)]
+    pts.sort(key=lambda p: p[2], reverse=True)
+    
+    clustered_rows = []
+    current_row = [pts[0]]
+    for p in pts[1:]:
+        if abs(p[2] - current_row[-1][2]) > 0.05:
+            clustered_rows.append(current_row)
+            current_row = [p]
+        else:
+            current_row.append(p)
+    if current_row:
+        clustered_rows.append(current_row)
+        
+    grid = []
+    for row_pts in clustered_rows:
+        row_pts.sort(key=lambda p: p[1])
+        row_cy = sum(p[2] for p in row_pts) / len(row_pts) if row_pts else 0.0
+        grid.append((row_cy, tuple((p[1], p[0]) for p in row_pts)))
+        
+    return tuple(grid)
+
+
+
 def _get_blocking_board_layout_centers(profile: BlockingBoardProfile) -> BlockingBoardCenters | None:
     key = _normalize_blocking_board_profile_name(_profile_name(profile)) or ''
     centers = _BLOCKING_BOARD_PROFILE_LAYOUT_CENTERS.get(key)
@@ -2108,7 +2554,8 @@ def _get_blocking_board_effective_count(profile: BlockingBoardProfile) -> int:
         return len(centers)
     return profile.block_count
 
-# Default battle-stage timers (milliseconds) for stage-sync packet (RspGameStage, 0x63).
+# Default stage timers (milliseconds) for stage-sync packet (RspGameStage, 0x63 / 0x3F4).
+PREPARE_STAGE_TOTAL_MS = 45_000
 DEFAULT_STAGE_TOTAL_MS = 180_000
 TRAINING_STAGE_TOTAL_MS = 1_800_000
 
@@ -2132,8 +2579,8 @@ def _is_guide_mode_game_state(game_state: dict | None) -> bool:
 
 
 def _should_seed_blocking_boards(game_state: dict | None) -> bool:
-    # Barricade/wall interactions are required in both guide and training flows.
-    return _is_training_mode_game_state(game_state) or _is_guide_mode_game_state(game_state)
+    # Barricade/wall interactions are required in all game modes (multiplayer, custom rooms, training, guide).
+    return True
 
 
 def _critical_region_state_for_player_camp(camp: int) -> int:
@@ -2176,13 +2623,24 @@ def _resolve_stage_sync_payload(
     game_state: dict | None,
     game_stage: int,
 ) -> tuple[int, int, int]:
-    """Build (timestamp, total_time, remain_time) for RspGameStage."""
+    """Build (timestamp, total_time, remain_time) in milliseconds for RspGameStage."""
     now_ts = int(time.time())
+
+    if game_stage == GAME_STAGE_PREPARE:
+        total_ms = PREPARE_STAGE_TOTAL_MS
+        remain_ms = total_ms
+        if session is not None:
+            prep_started_at = getattr(session, '_prep_stage_started_at', None)
+            if isinstance(prep_started_at, (int, float)) and prep_started_at > 0:
+                elapsed_ms = max(0, int((time.time() - float(prep_started_at)) * 1000.0))
+                remain_ms = max(0, total_ms - elapsed_ms)
+        return now_ts, total_ms, remain_ms
+
     total_ms = max(1, int(_resolve_stage_total_ms(game_state)))
     remain_ms = total_ms
 
     if game_stage == GAME_STAGE_BATTLE and session is not None:
-        started_at = session._battle_stage_started_at
+        started_at = getattr(session, '_battle_stage_started_at', None)
         if isinstance(started_at, (int, float)) and started_at > 0:
             elapsed_ms = max(0, int((time.time() - float(started_at)) * 1000.0))
             remain_ms = max(0, total_ms - elapsed_ms)
@@ -2441,19 +2899,24 @@ def build_rsp_ping(timestamp: int) -> bytes:
 
 
 def build_rsp_room_loading(
-    my_team: int,        # BattleTeam enum (u8): 1=blue, 2=orange
-    combat_type: int,    # u32
-    map_id: int,         # u32
-    mode_id: int,        # u32
-    attacker_list: list[dict],  # list of CharacterInfo dicts
-    defender_list: list[dict],  # list of CharacterInfo dicts
-    round_num: int = 1,  # u8
-    guide_id: int | None = None,   # optional u32
-    critical_region_id: int | None = None,  # optional u32
+    my_team: int,        # BattleTeam enum (u8): 1=blue, 2=orange (0x08)
+    combat_type: int,    # u32 (0x0c) -> BattleLoadData.CombatType
+    map_id: int,         # u32 (0x10) -> BattleLoadData.MapId
+    mode_id: int,        # u32 (0x14) -> BattleLoadData.ModeId & TableData.BattleModeTable
+    attacker_list: list[dict] = None,  # list of CharacterInfo dicts (0x1c)
+    defender_list: list[dict] = None,  # list of CharacterInfo dicts (0x20)
+    guide_id: int | None = None,       # optional u32 (0x18, present if flags & 1)
+    critical_region_id: int | None = None,  # optional u32 (0x24, present if flags & 2)
+    round_num: int = 1,  # u8 (0x28) -> BattleLoadData.Round
 ) -> bytes:
+    if attacker_list is None:
+        attacker_list = []
+    if defender_list is None:
+        defender_list = []
+
     out = OutputStream()
 
-    # Flags byte: bit0 = guide_id present, bit1 = critical_region_id present
+    # Flags byte: bit0 = guide_id present (0x18), bit1 = critical_region_id present (0x24)
     flags = 0
     if guide_id is not None:
         flags |= 1
@@ -2461,29 +2924,31 @@ def build_rsp_room_loading(
         flags |= 2
     out.write_u8(flags)
 
-    # enum_type<BattleTeam, u8>
-    out.write_u8(my_team)
+    # 0x08: enum_type<BattleTeam, u8>
+    out.write_u8(int(my_team) & 0xFF)
 
-    # u32 combat_type, map_id, mode_id
-    out.write_u32(combat_type)
-    out.write_u32(map_id)
-    out.write_u32(mode_id)
+    # 0x0c: combat_type (u32)
+    out.write_u32(int(combat_type) & 0xFFFFFFFF)
+    # 0x10: map_id (u32)
+    out.write_u32(int(map_id) & 0xFFFFFFFF)
+    # 0x14: mode_id (u32)
+    out.write_u32(int(mode_id) & 0xFFFFFFFF)
 
-    # optional guide_id
+    # 0x18: optional guide_id (only if flags & 1)
     if guide_id is not None:
-        out.write_u32(guide_id)
+        out.write_u32(int(guide_id) & 0xFFFFFFFF)
 
-    # vector<CharacterInfo> attacker
+    # 0x1c: vector<CharacterInfo> attacker
     _write_character_info_vector(out, attacker_list)
-    # vector<CharacterInfo> defender
+    # 0x20: vector<CharacterInfo> defender
     _write_character_info_vector(out, defender_list)
 
-    # optional critical_region_id
+    # 0x24: optional critical_region_id (only if flags & 2)
     if critical_region_id is not None:
-        out.write_u32(critical_region_id)
+        out.write_u32(int(critical_region_id) & 0xFFFFFFFF)
 
-    # u8 round
-    out.write_u8(round_num)
+    # 0x28: u8 round
+    out.write_u8(int(round_num) & 0xFF)
 
     return build_packet(PKT_RSP_ROOM_LOADING, out.get_bytes())
 
@@ -2540,7 +3005,7 @@ def _write_character_info(out: OutputStream, c: dict):
     for v in pos:
         out.write_f32(v)
 
-    out.write_u32(c.get('character_id', 1001))
+    out.write_u32(int(c.get('character_id', 1)))
 
     # vector<u32> skins
     skins = c.get('skins', [])
@@ -2572,7 +3037,7 @@ def _write_weapon(out: OutputStream, w: dict):
         for att in raw_attachments:
             if not isinstance(att, dict):
                 continue
-            att_id = int(att.get('id', 0) or 0)
+            att_id = int(att.get('id') or att.get('attachment_id') or att.get(0) or 0)
             # Skip prebattle placeholder attachment (id=0, kind=0) in battle payload.
             if att_id <= 0:
                 continue
@@ -2580,14 +3045,14 @@ def _write_weapon(out: OutputStream, w: dict):
     out.write_cuint(len(attachments))
     for att in attachments:
         # proto.common.SCAttachment optional flags: bit0 = skin present.
-        att_id = int(att.get('id', 0) or 0)
-        att_skin = att.get('skin')
+        att_id = int(att.get('id') or att.get('attachment_id') or att.get(0) or 0)
+        att_skin = att.get('skin') if 'skin' in att else att.get(2)
         if att_skin is not None:
             att_skin = int(att_skin)
-        att_flags = 1 if att_skin is not None else 0
+        att_flags = 1 if (att_skin is not None and att_skin > 0) else 0
         out.write_u8(att_flags)
         out.write_u32(int(att_id))
-        if att_skin is not None:
+        if att_flags & 1:
             out.write_u32(int(att_skin))
 
 
@@ -2626,10 +3091,58 @@ def build_rsp_critical_region_state(state: int) -> bytes:
     return build_packet(PKT_RSP_CRITICAL_REGION_STATE, out.get_bytes())
 
 
+def build_rsp_critical_progress(speed_rate: float, percent: int) -> bytes:
+    out = OutputStream()
+    out.write_f32(float(speed_rate))
+    out.write_u8(int(percent) & 0xFF)
+    return build_packet(PKT_RSP_CRITICAL_PROGRESS, out.get_bytes())
+
+
+def build_rsp_critical_progress_notify(state: int) -> bytes:
+    out = OutputStream()
+    out.write_u8(int(state) & 0xFF)
+    return build_packet(PKT_RSP_CRITICAL_PROGRESS_NOTIFY, out.get_bytes())
+
+
 def build_rsp_vehicle_born_place(born_place_id: int) -> bytes:
     out = OutputStream()
     out.write_u32(int(born_place_id) & 0xFFFFFFFF)
     return build_packet(PKT_RSP_VEHICLE_BORN_PLACE, out.get_bytes())
+
+
+def _resolve_attacker_vehicle_born_place(player: Any, session: Any = None) -> int:
+    """
+    Resolve a valid attacker spawn probe ID for drone initial placement.
+    Attacker spawn zones:
+      - Zone 0 (or 255 default): Harbor / Gangkou -> probes 6, 7, 8, 9, 10
+      - Zone 1: Twins / Shuangzi -> probes 16, 17, 18, 19, 20
+      - Zone 2: FamilyMart / Quanjia -> probes 26, 27, 28, 29, 30
+    Each player (bid) receives their own distinct slot probe to avoid collision and camera disorientation.
+    Defender bomb/critical regions (e.g. 0..3) are strictly filtered out so attacker drones never spawn at the bomb site.
+    """
+    bid = int(getattr(player, 'bid', 1) or 1)
+    slot_offset = (bid - 1) % 5
+    raw_region = getattr(player, 'born_region_id', None)
+    try:
+        region_int = int(raw_region) if raw_region is not None else 0
+    except Exception:
+        region_int = 0
+
+    if region_int in range(6, 11):
+        base = 6
+    elif region_int in range(16, 21):
+        base = 16
+    elif region_int in range(26, 31):
+        base = 26
+    elif region_int == 1:
+        base = 16
+    elif region_int == 2:
+        base = 26
+    else:
+        # Default attacker spawn zone (0 or 255)
+        base = 6
+
+    return base + slot_offset
 
 
 def build_rsp_battle_load_success(bid: int = 0) -> bytes:
@@ -2677,6 +3190,82 @@ def build_rsp_battle_result(
     return build_packet(PKT_RSP_BATTLE_RESULT, out.get_bytes())
 
 
+def build_rsp_battle_round_result(
+    round_index: int,
+    result: bool,
+    reason: int,
+    replay_bid: int = 0,
+    replay_dead: int = 0,
+    replay_item_uid: int | None = None,
+    replay_item_pos: tuple[float, float, float] | None = None,
+    replay_mode: int = 1,
+    replay_pos: tuple[float, float, float] | None = None,
+) -> bytes:
+    """Build RspBattleRoundResult (0x7B) packet.
+
+    Matches proto.game.RspBattleRoundResult wire layout:
+      flags (u8): bit0 replay_dead, bit1 replay_item_uid, bit2 replay_item_pos
+      round (u8)
+      result (boolean, 1B: 1 if this player won, 0 if lost)
+      reason (BattleGameOverReason, u8)
+      replay_bid (u8: killer BID, required)
+      [replay_dead] (u8: victim BID, if flags & 0x01)
+      [replay_item_uid] (u64, if flags & 0x02)
+      [replay_item_pos] (Vector3: 3 x f32, if flags & 0x04)
+      replay_mode (ReplayMode enum, u8: 1=Default, 2=BombMode)
+    """
+    if replay_pos is not None and replay_item_pos is None:
+        replay_item_pos = replay_pos
+
+    flags = 0
+    if replay_dead and int(replay_dead) > 0:
+        flags |= 0x01
+    if replay_item_uid is not None and int(replay_item_uid) > 0:
+        flags |= 0x02
+    if replay_item_pos is not None:
+        flags |= 0x04
+
+    out = OutputStream()
+    out.write_u8(flags)
+    out.write_u8(int(round_index) & 0xFF)
+    out.write_u8(1 if result else 0)
+    out.write_u8(int(reason) & 0xFF)
+    out.write_u8(int(replay_bid) & 0xFF)
+
+    if flags & 0x01:
+        out.write_u8(int(replay_dead) & 0xFF)
+    if flags & 0x02:
+        out.write_u64(int(replay_item_uid))
+    if flags & 0x04:
+        out.write_f32(float(replay_item_pos[0]))
+        out.write_f32(float(replay_item_pos[1]))
+        out.write_f32(float(replay_item_pos[2]))
+
+    out.write_u8(int(replay_mode) & 0xFF)
+    return build_packet(PKT_RSP_BATTLE_ROUND_RESULT, out.get_bytes())
+
+
+def build_rsp_round_points(
+    uid: int,
+    points: list[tuple[int, int]] | None = None,
+) -> bytes:
+    """Build RspRoundPoints (0xDF) packet.
+    Matches proto.game.RspRoundPoints wire layout:
+      player_id: u64
+      vector<ActionPoint>: u32 count, then each has u32 action, s32 point
+    """
+    out = OutputStream()
+    out.write_u64(int(uid))
+    if not points:
+        out.write_u32(0)
+    else:
+        out.write_u32(len(points))
+        for action, point in points:
+            out.write_u32(int(action))
+            out.write_s32(int(point))
+    return build_packet(PKT_RSP_ROUND_POINTS, out.get_bytes())
+
+
 def build_rsp_reset_all_weapon_item_num() -> bytes:
     return build_packet(PKT_RSP_RESET_ALL_WEAPON_ITEM_NUM, b'')
 
@@ -2694,9 +3283,16 @@ def build_rsp_reset_effect_config(config_id: int = 0) -> bytes:
 
 
 def build_rsp_load_progress(bid: int, progress: float) -> bytes:
+    try:
+        prog = float(progress)
+        if math.isnan(prog) or math.isinf(prog):
+            prog = 1.0
+    except Exception:
+        prog = 0.0
+    prog = max(0.0, min(1.0, prog))
     out = OutputStream()
-    out.write_u8(bid)
-    out.write_f32(progress)
+    out.write_u8(int(bid) & 0xFF)
+    out.write_f32(prog)
     return build_packet(PKT_RSP_LOAD_PROGRESS, out.get_bytes())
 
 
@@ -3706,6 +4302,18 @@ def build_rsp_player_death(
     return build_packet(PKT_RSP_PLAYER_DEATH, out.get_bytes())
 
 
+def build_rsp_player_relive(player_bid: int, saver_id: int = 0) -> bytes:
+    out = OutputStream()
+    out.write_u8(int(player_bid) & 0xFF)
+    out.write_u32(int(saver_id) & 0xFFFFFFFF)
+    return build_packet(PKT_RSP_PLAYER_RELIVE, out.get_bytes())
+
+
+def build_rsp_reset_all_weapon_item_num() -> bytes:
+    return build_packet(PKT_RSP_RESET_ALL_WEAPON_ITEM_NUM, b"")
+
+
+
 def build_rsp_event_character_enemy_explosive_hurt(
     *,
     source_bid: int,
@@ -3751,6 +4359,22 @@ def build_rsp_delete_scene_tool(
     out.write_u8(int(attacker_bid) & 0xFF)
     out.write_u8(int(effect_type) & 0xFF)
     return build_packet(PKT_RSP_DELETE_SCENE_TOOL, out.get_bytes())
+
+
+def build_rsp_unmanned_vehicle_dead(vehicle_id: int, attacker_bid: int, effect_type: int = 1) -> bytes:
+    out = OutputStream()
+    out.write_u64(int(vehicle_id) & 0xFFFFFFFFFFFFFFFF)
+    out.write_u8(int(attacker_bid) & 0xFF)
+    out.write_u8(int(effect_type) & 0xFF)
+    return build_packet(PKT_RSP_UNMANNED_VEHICLE_DEAD, out.get_bytes())
+
+
+def build_rsp_monitor_dead(monitor_id: int, attacker_bid: int, effect_type: int = 1) -> bytes:
+    out = OutputStream()
+    out.write_u32(int(monitor_id) & 0xFFFFFFFF)
+    out.write_u8(int(attacker_bid) & 0xFF)
+    out.write_u8(int(effect_type) & 0xFF)
+    return build_packet(PKT_RSP_MONITOR_DEAD, out.get_bytes())
 
 
 def build_rsp_operate_character(
@@ -4045,6 +4669,12 @@ def build_rsp_notify_defuser_state(state: int) -> bytes:
     out = OutputStream()
     out.write_u8(int(state) & 0xFF)
     return build_packet(PKT_RSP_NOTIFY_DEFUSER_STATE, out.get_bytes())
+
+
+def build_rsp_defuser_installed(region_id: int) -> bytes:
+    out = OutputStream()
+    out.write_u32(int(region_id) & 0xFFFFFFFF)
+    return build_packet(PKT_RSP_DEFUSER_INSTALLED, out.get_bytes())
 
 
 def build_rsp_character_climb_ladder(
@@ -4542,6 +5172,32 @@ def build_rsp_players_result_empty() -> bytes:
     return build_packet(PKT_RSP_PLAYERS_RESULT, out.get_bytes())
 
 
+def build_rsp_players_result(results: list[dict]) -> bytes:
+    out = OutputStream()
+    out.write_cuint(len(results))
+    for res in results:
+        out.write_u32(int(res.get('uid', 0)) & 0xFFFFFFFF)
+        out.write_s32(int(res.get('score', 0)))
+        out.write_u8(int(res.get('kill', 0)) & 0xFF)
+        out.write_u8(int(res.get('assist', 0)) & 0xFF)
+        out.write_u8(int(res.get('dead', 0)) & 0xFF)
+        out.write_bool(bool(res.get('is_no_hurt', False)))
+        out.write_u32(int(res.get('dead_time', 0)) & 0xFFFFFFFF)
+        out.write_u8(int(res.get('hit_down_num', 0)) & 0xFF)
+        out.write_u8(int(res.get('help_num', 0)) & 0xFF)
+        out.write_u8(int(res.get('be_helped_num', 0)) & 0xFF)
+        out.write_u32(int(res.get('shoot_num', 0)) & 0xFFFFFFFF)
+        out.write_u8(int(res.get('head_shot_num', 0)) & 0xFF)
+        out.write_u8(int(res.get('melee_kill_num', 0)) & 0xFF)
+        out.write_u8(int(res.get('penetrate_kill_num', 0)) & 0xFF)
+        out.write_u64(int(res.get('time_stamp', 0)) & 0xFFFFFFFFFFFFFFFF)
+        out.write_bool(bool(res.get('is_muzzy', False)))
+        out.write_u32(int(res.get('teammate_damage', 0)) & 0xFFFFFFFF)
+        out.write_u32(int(res.get('destroy_friend_item_count', 0)) & 0xFFFFFFFF)
+        out.write_bool(bool(res.get('is_cheat', False)))
+    return build_packet(PKT_RSP_PLAYERS_RESULT, out.get_bytes())
+
+
 def build_rsp_character_operate_blocking_board(
     bid: int,
     pose: dict,
@@ -4638,6 +5294,20 @@ def build_rsp_event_wall_block_destroy(
     return build_packet(PKT_RSP_EVENT_WALL_BLOCK_DESTROY, out.get_bytes())
 
 
+def build_rsp_event_pillar_segments_destroy(
+    group_id: int,
+    pillar_id: int,
+    segments: list[int],
+) -> bytes:
+    out = OutputStream()
+    out.write_u32(int(group_id) & 0xFFFFFFFF)
+    out.write_u8(int(pillar_id) & 0xFF)
+    out.write_cuint(len(segments))
+    for seg in segments:
+        out.write_u8(int(seg) & 0xFF)
+    return build_packet(PKT_RSP_EVENT_PILLAR_SEGMENTS_DESTROY, out.get_bytes())
+
+
 def build_rsp_reinforced_del(target_index: int) -> bytes:
     out = OutputStream()
     out.write_u32(int(target_index) & 0xFFFFFFFF)
@@ -4690,17 +5360,35 @@ def build_rsp_simple_quintain_info(broken_simple_quintains: list[int]) -> bytes:
     return build_packet(PKT_RSP_SIMPLE_QUINTAIN_INFO, out.get_bytes())
 
 
-def build_rsp_pillar_group_info() -> bytes:
+def build_rsp_pillar_group_info(broken_pillar_segments: dict[int, dict[int, set[int]]] | None = None) -> bytes:
     # RspPillarGroupInfo.Data: vector<PillarGroup> broken_pillar_groups
     out = OutputStream()
-    out.write_cuint(0)
+    if not broken_pillar_segments:
+        out.write_cuint(0)
+        return build_packet(PKT_RSP_PILLAR_GROUP_INFO, out.get_bytes())
+
+    active_groups = {gid: pdata for gid, pdata in broken_pillar_segments.items() if any(pdata.values())}
+    out.write_cuint(len(active_groups))
+    for gid, pdata in active_groups.items():
+        out.write_u32(int(gid) & 0xFFFFFFFF)
+        pillars_with_segs = {pid: segs for pid, segs in pdata.items() if segs}
+        out.write_cuint(len(pillars_with_segs))
+        for pid, segs in pillars_with_segs.items():
+            out.write_u8(int(pid) & 0xFF)
+            sorted_segs = sorted(segs)
+            out.write_cuint(len(sorted_segs))
+            for s in sorted_segs:
+                out.write_u8(int(s) & 0xFF)
     return build_packet(PKT_RSP_PILLAR_GROUP_INFO, out.get_bytes())
 
 
-def build_rsp_security_camera_info() -> bytes:
+def build_rsp_security_camera_info(broken_cameras: list[int] | set[int] | None = None) -> bytes:
     # RspSecurityCameraInfo.Data: vector<u32> broken_security_cameras
     out = OutputStream()
-    out.write_cuint(0)
+    cams = list(broken_cameras or [])
+    out.write_cuint(len(cams))
+    for cid in cams:
+        out.write_u32(int(cid) & 0xFFFFFFFF)
     return build_packet(PKT_RSP_SECURITY_CAMERA_INFO, out.get_bytes())
 
 
@@ -6074,7 +6762,15 @@ def parse_req_grenade_explosive_pos_report(stream: InputStream) -> dict:
             'grenade_unique_id': int(
                 data.get('grenade_id', data.get('grenade_unique_id', 0)) or 0
             ),
-            'explosive_pos': data.get('dir', data.get('explosive_pos', (0.0, 0.0, 0.0))),
+            'explosive_pos': (
+                data['trans']['pos']
+                if isinstance(data.get('trans'), dict) and isinstance(data['trans'].get('pos'), tuple)
+                else (
+                    data.get('explosive_pos')
+                    if isinstance(data.get('explosive_pos'), tuple) and data.get('explosive_pos') != (0.0, 0.0, 0.0)
+                    else (0.0, 0.0, 0.0)
+                )
+            ),
             'throw_transform': data.get('trans', data.get('throw_transform', {})),
         },
     )
@@ -6706,16 +7402,36 @@ class BattlePlayer:
         self.character_id: int = 1
         self.loaded: bool = False
         self.progress: float = 0.0
+        self._last_progress_at: float = 0.0
         self.last_grenade_unique_id: int = 0
         self.last_grenade_pos: tuple[float, float, float] = (0.0, 0.0, 0.0)
         self.last_grenade_timeout_uid: int = 0
+        self.last_grenade_begin_time: float = 0.0
+        self.last_grenade_begin_time: float = 0.0
+        self.grenades_pos: dict[int, tuple[float, float, float]] = {}
+        self.grenades_timeout: set[int] = set()
+        self.grenades_begin_time: dict[int, float] = {}
+        self.grenade_count: int = 2
+        self.hammer_count: int = 15
+        self.gadget_counts: dict[int, int] = {}
+        self.skill_cooldown_end: dict[int, float] = {}
+        self.active_skills_start: dict[int, float] = {}
         self.active_scene_tools: set[int] = set()
         self.last_scene_tool_unique_id: int = 0
         self.last_place_scene_tool_unique_id: int = 0
+        self.last_place_scene_tool_pos: tuple[float, float, float] = (0.0, 0.0, 0.0)
+        self.last_place_scene_tool_type: int = 0
         self.last_scene_tool_hand_item_id: int = 0
         self.last_place_target_wall_id: int = 0
         self.hp: int = 100
         self.is_dead: bool = False
+        self.kills: int = 0
+        self.deaths: int = 0
+        self.assists: int = 0
+        self.score: int = 0
+        self.headshots: int = 0
+        self.melee_kills: int = 0
+        self.shoot_count: int = 0
         self.last_character_pos: tuple[float, float, float] = (0.0, 0.0, 0.0)
         self.primary_weapon: dict | None = None
         self.secondary_weapon: dict | None = None
@@ -6734,6 +7450,8 @@ class BattlePlayer:
         self.guide_scripted_remote_kill_done: bool = False
         self._load_success_sent: bool = False
         self._spawn_probe_logged: bool = False
+        self._vehicle_born_sent: bool = False
+        self._gameplay_sync_sent: bool = False
         self._hb_recv_count: int = 0
         self._hb_echo_count: int = 0
         self._recv_buf = bytearray()
@@ -6774,16 +7492,96 @@ def _get_live_room_state() -> dict:
     return {}
 
 
+_CRITICAL_REGION_CENTERS: dict[tuple[int, int], tuple[float, float, float]] = {
+    # Map 1 (Cargo Dock / level02_can):
+    (1, 1): (3.5, 1.46, -7.5),
+    (1, 0): (3.5, 1.46, -7.5),
+    (1, 5): (3.5, 1.46, -7.5),
+    (1, 11): (1.0, 5.12, -6.5),
+    (1, 6): (1.0, 5.12, -6.5),
+    (1, 21): (3.0, -2.20, -5.0),
+    (1, 3): (3.0, -2.20, -5.0),
+    (1, 31): (-4.5, -6.97, 8.0),
+    (1, 4): (-4.5, -6.97, 8.0),
+    (1, 2): (3.0, -2.20, -5.0),
+    # Map 2 (Mexico / level03_mex):
+    (2, 0): (1.67, 3.25, -1.0),
+    (2, 1): (1.67, 3.25, -1.0),
+    (2, 2): (5.0, 6.90, 4.0),
+    (2, 3): (10.0, 3.25, -5.0),
+    # Map 3 (Guide / level00_tra):
+    (3, 1): (4.807, -2.031, -7.926),
+    (3, 0): (4.807, -2.031, -7.926),
+    # Map 6 (Russia / level04_rus):
+    (6, 0): (8.82, 0.25, 3.11),
+    (6, 1): (8.82, 0.25, 3.11),
+    (6, 2): (5.26, 3.23, -8.89),
+    (6, 3): (-0.95, 3.22, 6.62),
+    # Map 7 (Japan / level05_jpn):
+    (7, 0): (7.31, 3.50, -2.19),
+    (7, 1): (7.31, 3.50, -2.19),
+    (7, 2): (10.35, -2.20, 9.27),
+    (7, 3): (-0.97, 1.45, 6.63),
+}
+
+
 class BattleSession:
     """A single battle session that can host multiple players."""
+
+    def _get_critical_region_center(self) -> tuple[float, float, float]:
+        map_id = int(self.game_state.get('map_id', 1) or 1)
+        region_id = self.room_loading_critical_region_id
+        if region_id is None:
+            region_id = _get_primary_target_zone_for_map(map_id) or 1
+
+        center = _CRITICAL_REGION_CENTERS.get((map_id, int(region_id)))
+        if center is not None:
+            return center
+
+        center = _CRITICAL_REGION_CENTERS.get((map_id, 0)) or _CRITICAL_REGION_CENTERS.get((map_id, 1))
+        if center is not None:
+            return center
+
+        base = self._TRAINING_SPAWN_ANCHORS.get((map_id, BATTLE_CAMP_DEFENDER))
+        if base is not None:
+            return base
+
+        return (3.5, 1.46, -7.5)
+
+    def _get_active_bomb_zones(self) -> tuple[int, int]:
+        """Return the (site_a, site_b) pair of active bomb plants for this session."""
+        reg = self.room_loading_critical_region_id
+        if reg is None:
+            reg = self.game_state.get('region_id', 0)
+        try:
+            reg_idx = int(reg)
+        except Exception:
+            reg_idx = 0
+        if reg_idx in (255, -1):
+            reg_idx = 0
+
+        # Region selection maps to pair (1,2), (3,4), (5,6), (7,8)
+        if reg_idx == 1 or reg_idx in (11, 12, 13, 14, 15):
+            return (3, 4)
+        elif reg_idx == 2 or reg_idx in (21, 22, 23, 24, 25):
+            return (5, 6)
+        elif reg_idx == 3 or reg_idx in (31, 32, 33, 34, 35):
+            return (7, 8)
+        return (1, 2)
 
     def __init__(self, battle_id: int, game_state: dict, player_data: dict,
                  log_fn: Callable | None = None):
         self.battle_id = battle_id
         self.game_state = game_state
         self.player_data = player_data
+        try:
+            if int(self.game_state.get('mode_id', 0) or 0) <= 0:
+                self.game_state['mode_id'] = 4
+        except Exception:
+            self.game_state['mode_id'] = 4
         self.players: dict[int, BattlePlayer] = {}  # bid -> BattlePlayer
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
+        self.created_at = time.time()
         # Use 1-based bids to match lobby/pre-battle player slot conventions.
         self._next_bid = int(game_state.get('player_bid', 1) or 1)
         self._log = log_fn or (lambda msg: print(f"[Battle] {msg}"))
@@ -6820,16 +7618,26 @@ class BattleSession:
                     bp.main_skill_id = p_entry.get("main_skill_id")
                     bp.sub_skill_id = p_entry.get("sub_skill_id")
                     bp.skins = p_entry.get("skins")
-                    bp.born_region_id = p_entry.get("region_id") or p_entry.get("spawn_region_id")
+                    bp.born_region_id = p_entry.get("region_id") if p_entry.get("region_id") is not None else p_entry.get("spawn_region_id")
                     self.players[idx] = bp
-                    self._log(f"pre-seeded room player bid={idx} uid={p_uid} name={p_name} camp={p_camp} team={p_team} char={p_char_id}")
+                    self._log(f"pre-seeded room player bid={idx} uid={p_uid} name={p_name} camp={p_camp} team={p_team} char={p_char_id} region={bp.born_region_id}")
                 if self.players:
                     self._next_bid = max(self.players.keys()) + 1
         except Exception as exc:
             self._log(f"seed players from room error: {exc}")
         self._started = False
-        self.stage = GAME_STAGE_BATTLE
+        self._created_at: float = time.time()
+        self._last_player_joined_at: float = time.time()
+        self._fallback_timer_armed: bool = False
+        self._fallback_force_started: bool = False
+        self._near_loaded_timer_armed: bool = False
+        self._game_start_ts: int = 0
+        self.stage = GAME_STAGE_PREPARE if int(self.game_state.get('mode_id', 0) or 0) != 3 else GAME_STAGE_BATTLE
         self._round_finished = False
+        self.round_num = 1
+        self.attacker_score = 0
+        self.defender_score = 0
+        self._prep_stage_started_at: float | None = None
         self._battle_stage_started_at: float | None = None
         self.blocking_board_states: dict[int, int] = {}
         self.armor_packages: dict[int, dict] = {}
@@ -6850,8 +7658,10 @@ class BattleSession:
         self.last_blocking_board_id: int | None = None
         self.player_placed_blocking_board_ids: set[int] = set()
         self.ended_scene_tool_unique_ids: set[int] = set()
+        self.detonated_grenades: set[int] = set()
         self.scene_tool_board_hint: dict[int, int] = {}
         self.scene_tool_wall_hint: dict[int, int] = {}
+        self.placed_scene_tools: dict[int, dict] = {}
         self.reinforced_states: dict[int, int] = {}
         # Legacy blocking-board runtime storage (barricade channel).
         self.dynamic_walls: dict[int, dict[str, object]] = {}
@@ -6859,8 +7669,12 @@ class BattleSession:
         # Scene wall runtime storage (DestroySceneObject / wall channel).
         self.wall_dynamic_walls: dict[int, dict[str, object]] = {}
         self.wall_broken_blocks: dict[int, set[int]] = {}
+        self.wall_anchors: dict[int, tuple[float, float, float]] = {}
+        self.wall_metadata: dict[int, dict] = {}
         self.reinforced_walls: dict[int, dict[str, object]] = {}
         self.reinforced_wall_items: set[int] = set()
+        self.broken_pillar_groups: set[int] = set()
+        self.broken_pillar_segments: dict[int, dict[int, set[int]]] = {}
         self.training_target_state: dict[int, dict] = _build_default_training_target_state()
         self.training_target_entities_created: bool = False
         # Runtime critical-region state tracked for guide scripting.
@@ -6868,6 +7682,14 @@ class BattleSession:
         self.guide_pending_only_attackers_state: bool = False
         self.guide_pending_only_attackers_at: float = 0.0
         self.room_loading_critical_region_id: int | None = None
+        # Runtime critical-region state & capture tracking (Secure Area / Mode 1).
+        self.critical_region_state: int = CRITICAL_REGION_STATE_ONLY_DEFENDERS
+        self.critical_progress_notify_state: int | None = None
+        self.capture_progress: float = 0.0
+        self._last_progress_broadcast_at: float = 0.0
+        self._last_tick_time: float = time.time()
+        self._overtime_logged: bool = False
+        self.broken_security_cameras: set[int] = set()
 
         try:
             map_id = int(self.game_state.get('map_id', 0) or 0)
@@ -6881,17 +7703,28 @@ class BattleSession:
                     f"targets={seeded_training_targets}"
                 )
 
+        seeded_walls = _session_seed_walls_from_manifest(self, map_id)
+        if seeded_walls > 0:
+            self._log(
+                f"wall seed source=manifest map_id={map_id} "
+                f"walls={seeded_walls}"
+            )
+
         if _should_seed_blocking_boards(self.game_state):
             seeded_from_manifest = _session_seed_training_blocking_boards_from_manifest(
                 self,
                 map_id,
             )
             if seeded_from_manifest > 0:
+                active_cnt = sum(
+                    1 for s in self.blocking_board_states.values()
+                    if s != BLOCKING_BOARD_STATE_DEACTIVE
+                )
+                deactive_cnt = len(self.blocking_board_states) - active_cnt
                 self._log(
                     f"blocking-board seed source=manifest map_id={map_id} "
                     f"boards={seeded_from_manifest} "
-                    f"state={BLOCKING_BOARD_SEEDED_DEFAULT_STATE} "
-                    f"active={1 if BLOCKING_BOARD_SEEDED_DEFAULT_ACTIVE else 0}"
+                    f"active={active_cnt} deactive={deactive_cnt}"
                 )
             elif map_id == 1:
                 for board_id in TRAINING_DEFAULT_BLOCKING_BOARD_IDS:
@@ -6919,112 +7752,767 @@ class BattleSession:
                     f"active={1 if BLOCKING_BOARD_SEEDED_DEFAULT_ACTIVE else 0}"
                 )
 
+
     def _send_load_success_once(self, player: BattlePlayer):
-        if player._load_success_sent:
+        if self._started or player._load_success_sent:
             return
         player._load_success_sent = True
         success_pkt = build_rsp_battle_load_success(player.bid)
         self.broadcast(success_pkt)
         self._log(f"sent RspBattleLoadSuccess bid={player.bid} to all players")
 
+    def get_players_result(self) -> list[dict]:
+        results = []
+        with self._lock:
+            for p in self.players.values():
+                results.append({
+                    'uid': getattr(p, 'uid', 0),
+                    'score': getattr(p, 'score', 0),
+                    'kill': getattr(p, 'kills', 0),
+                    'assist': getattr(p, 'assists', 0),
+                    'dead': getattr(p, 'deaths', 0),
+                    'is_no_hurt': (getattr(p, 'deaths', 0) == 0 and getattr(p, 'hp', 100) == 100),
+                    'dead_time': 0,
+                    'hit_down_num': 0,
+                    'help_num': 0,
+                    'be_helped_num': 0,
+                    'shoot_num': getattr(p, 'shoot_count', 0),
+                    'head_shot_num': getattr(p, 'headshots', 0),
+                    'melee_kill_num': getattr(p, 'melee_kills', 0),
+                    'penetrate_kill_num': 0,
+                    'time_stamp': int(time.time()),
+                    'is_muzzy': False,
+                    'teammate_damage': 0,
+                    'destroy_friend_item_count': 0,
+                    'is_cheat': False,
+                })
+        return results
+
+    def broadcast_players_result(self) -> None:
+        results = self.get_players_result()
+        if results:
+            self.broadcast(build_rsp_players_result(results))
+            self._log(f"[Score] Broadcast RspPlayersResult ({len(results)} players)")
+
+    def schedule_game_start(self, delay: float = 0.5):
+        with self._lock:
+            if self._started or getattr(self, '_start_scheduled', False):
+                return
+            self._start_scheduled = True
+
+        def _runner():
+            try:
+                time.sleep(delay)
+                self._send_game_start_once()
+            except Exception as e:
+                self._log(f"error in schedule_game_start runner: {e}")
+
+        t = threading.Thread(target=_runner, daemon=True)
+        t.start()
+        self._log(f"all players reached 100% -> scheduled RspGameStart in {delay:.1f}s (pipeline completion grace window)")
+
+    # Seconds to wait after RspRoomLoading before force-starting if clients hang.
+    # Measured from the LAST player join, not the first. This prevents the timer
+    # from firing while the second player is still early in their loading sequence.
+    _ROOM_LOADING_FALLBACK_TIMEOUT: float = 60.0
+
+    # Seconds to wait when ALL active players are near-loaded (>=90%) before force-starting.
+    # Handles the case where a player is stuck at 95-99% and never sends ReqRoomLoaded.
+    _ROOM_NEAR_LOADED_GRACE: float = 10.0
+
+    def _arm_loading_fallback_timer(self) -> None:
+        """Start a one-shot background thread that force-starts the game if players
+        are still not loaded after _ROOM_LOADING_FALLBACK_TIMEOUT seconds and are not
+        actively making progress.
+
+        Idempotent — only the first call per session actually arms the timer.
+        """
+        with self._lock:
+            if getattr(self, '_fallback_timer_armed', False):
+                return
+            self._fallback_timer_armed = True
+
+        def _fallback_runner():
+            try:
+                while True:
+                    time.sleep(2.0)
+                    with self._lock:
+                        already_started = self._started
+                        last_join = getattr(self, '_last_player_joined_at', 0.0)
+                    if already_started:
+                        return
+                    # Wait until FALLBACK_TIMEOUT seconds have elapsed since the
+                    # LAST player joined, so we don't fire while the second player
+                    # is still in the early stages of their loading sequence.
+                    deadline = last_join + self._ROOM_LOADING_FALLBACK_TIMEOUT
+                    now = time.time()
+
+                    # Check if any active player is actively making loading progress
+                    with self._lock:
+                        actively_loading = False
+                        for p in self.players.values():
+                            if p.sock is not None and not p.loaded:
+                                last_prog_t = getattr(p, '_last_progress_at', 0.0) or 0.0
+                                if last_prog_t > 0.0 and (now - last_prog_t) < 8.0:
+                                    actively_loading = True
+                                    break
+                                # If player has not started loading, re-send RspRoomLoading every 4s (up to 20s)
+                                if getattr(p, 'progress', 0.0) == 0.0 and (now - last_join) <= 20.0:
+                                    last_sent = getattr(p, '_last_room_loading_sent_at', 0.0)
+                                    if (now - last_sent) >= 4.0:
+                                        p._last_room_loading_sent_at = now
+                                        try:
+                                            p.send_raw(self.build_room_loading(p))
+                                            self._log(f"[FallbackRunner] Re-sent RspRoomLoading to bid={p.bid} uid={p.uid} (progress=0)")
+                                        except Exception:
+                                            pass
+                    # If any player is actively loading, do not timeout unless hard cap (90s) reached
+                    if actively_loading and (now < last_join + 90.0):
+                        continue
+
+                    if now >= deadline:
+                        break
+                with self._lock:
+                    already_started = self._started
+                if already_started:
+                    return
+                self._log(
+                    f"[FALLBACK] {self._ROOM_LOADING_FALLBACK_TIMEOUT:.0f}s timeout expired "
+                    "(clients inactive or hard cap reached); forcing RspGameStart"
+                )
+                self._fallback_force_started = True
+                # Mark all connected players as loaded so game start proceeds cleanly
+                with self._lock:
+                    for p in list(self.players.values()):
+                        p.loaded = True
+                self.schedule_game_start(delay=0.0)
+            except Exception as e:
+                self._log(f"error in loading fallback timer: {e}")
+
+        t = threading.Thread(target=_fallback_runner, daemon=True)
+        t.start()
+        self._log(
+            f"loading fallback timer armed ({self._ROOM_LOADING_FALLBACK_TIMEOUT:.0f}s) "
+            "— will force-start only if clients hang or stop progressing"
+        )
+
+    def _arm_near_loaded_timer(self) -> None:
+        """Arm a grace timer only when ALL active players are near loaded (>=90%),
+        to handle Unity preloader exceptions where a client is stuck at 90-99%
+        and never sends the final 1.0 or ReqRoomLoaded. Idempotent.
+        """
+        with self._lock:
+            if getattr(self, '_near_loaded_timer_armed', False):
+                return
+            self._near_loaded_timer_armed = True
+
+        def _near_loaded_runner():
+            try:
+                time.sleep(self._ROOM_NEAR_LOADED_GRACE)
+                with self._lock:
+                    already_started = self._started
+                    active_players = [p for p in self.players.values() if p.sock is not None]
+                    # CRITICAL: ONLY force-start if EVERY active player is >= 90% loaded!
+                    # Never force-start if any player is still at early or mid progress (e.g. 50-80%)!
+                    all_near = bool(active_players) and all(
+                        p.loaded or getattr(p, 'progress', 0.0) >= 0.90 for p in active_players
+                    )
+                if already_started:
+                    return
+                if not all_near:
+                    with self._lock:
+                        self._near_loaded_timer_armed = False
+                    return
+                self._log(
+                    f"[NEAR-LOADED] {self._ROOM_NEAR_LOADED_GRACE:.0f}s grace expired; "
+                    "all active players are >=90% but all_loaded() never fired — "
+                    "forcing game start"
+                )
+                with self._lock:
+                    for p in active_players:
+                        p.loaded = True
+                self.schedule_game_start(delay=0.0)
+            except Exception as e:
+                self._log(f"error in near-loaded grace timer: {e}")
+
+        t = threading.Thread(target=_near_loaded_runner, daemon=True)
+        t.start()
+        self._log(
+            f"near-loaded grace timer armed ({self._ROOM_NEAR_LOADED_GRACE:.0f}s) "
+            "— will force-start only if all active players remain stuck at >=90%"
+        )
+
     def _send_game_start_once(self):
-        if self._started:
-            return
-        self._started = True
-        self._round_finished = False
-        self._battle_stage_started_at = time.time()
-        ts = int(time.time())
-        start_pkt = build_rsp_game_start(ts)
-        self.broadcast(start_pkt)
-        self._log(f"sent RspGameStart ts={ts} to all players")
-        sec_cam_pkt = build_rsp_security_camera_info()
-        self.broadcast(sec_cam_pkt)
-        self._log("sent RspSecurityCameraInfo (0x457) to all players")
+        with self._lock:
+            if getattr(self, '_game_start_sent', False):
+                return
+            self._game_start_sent = True
+            self._started = True
+            self._round_finished = False
 
-        map_id = int(self.game_state.get('map_id', 1) or 1)
-        mode_id = int(self.game_state.get('mode_id', 0) or 0)
-        if mode_id in (4, 5):
-            target_zones = _load_map_target_zones_cache().get(map_id, (1, 2))
-            bomb_pkt = build_rsp_spawn_bomb_region(list(target_zones))
-            self.broadcast(bomb_pkt)
-            self._log(f"broadcast RspSpawnBombRegion zones={list(target_zones)} map_id={map_id}")
+            map_id = int(self.game_state.get('map_id', 1) or 1)
+            mode_id = int(self.game_state.get('mode_id', 0) or 0)
+            ts = int(time.time())
+            self._game_start_ts = ts
 
-        if mode_id != 3:
-            self.stage = GAME_STAGE_PREPARE
-            stage_pkt = build_rsp_game_stage(
-                timestamp=ts,
-                game_stage=GAME_STAGE_PREPARE,
-                total_time=45,
-                remain_time=45,
-            )
-            self.broadcast(stage_pkt)
+            start_pkt = build_rsp_game_start(ts)
+            self.broadcast(start_pkt)
+            self._log(f"sent RspGameStart ts={ts} to all players (Round #{self.round_num})")
+
+            has_prep_phase = (mode_id != 3)
+            if has_prep_phase:
+                self.stage = GAME_STAGE_PREPARE
+                self._prep_stage_started_at = time.time()
+                self._battle_stage_started_at = None
+                stage_ts, prep_total_ms, prep_remain_ms = _resolve_stage_sync_payload(
+                    session=self,
+                    game_state=self.game_state,
+                    game_stage=GAME_STAGE_PREPARE,
+                )
+                stage_pkt = build_rsp_game_stage(
+                    timestamp=stage_ts,
+                    game_stage=GAME_STAGE_PREPARE,
+                    total_time=prep_total_ms,
+                    remain_time=prep_remain_ms,
+                )
+                self.broadcast(stage_pkt)
+                self._log(f"started GAME_STAGE_PREPARE total_time=45s ({prep_total_ms}ms)")
+
+                # Send drone vehicle spawn (0x3F5) to attackers
+                for bid, p in list(self.players.items()):
+                    if getattr(p, 'camp', 1) == BATTLE_CAMP_ATTACKER and p.sock:
+                        born_place_id = _resolve_attacker_vehicle_born_place(p, self)
+                        veh_born_pkt = build_rsp_vehicle_born_place(int(born_place_id))
+                        p.send_raw(veh_born_pkt)
+                        self._log(f"sent RspVehicleBornPlace (0x3F5) born_place_id={born_place_id} to attacker bid={p.bid} uid={p.uid}")
+            else:
+                self.stage = GAME_STAGE_BATTLE
+                self._battle_stage_started_at = time.time()
+                self._prep_stage_started_at = None
+                stage_ts, battle_total_ms, battle_remain_ms = _resolve_stage_sync_payload(
+                    session=self,
+                    game_state=self.game_state,
+                    game_stage=GAME_STAGE_BATTLE,
+                )
+                stage_pkt = build_rsp_game_stage(
+                    timestamp=stage_ts,
+                    game_stage=GAME_STAGE_BATTLE,
+                    total_time=battle_total_ms,
+                    remain_time=battle_remain_ms,
+                )
+                self.broadcast(stage_pkt)
+
             crit_pkt = build_rsp_critical_region_state(CRITICAL_REGION_STATE_ONLY_DEFENDERS)
             self.broadcast(crit_pkt)
             _guide_set_critical_region_state(self, CRITICAL_REGION_STATE_ONLY_DEFENDERS)
-            self._log("broadcast RspGameStage PREPARE (45s) & RspCriticalRegionState ONLY_DEFENDERS")
 
-            # Send RspVehicleBornPlace (0x3F5) to attackers to spawn drone and enter drone UI
-            for p in self.players.values():
-                if p.camp == BATTLE_CAMP_ATTACKER:
-                    born_place_id = getattr(p, 'born_region_id', None)
-                    if born_place_id is None:
-                        born_place_id = int(self.game_state.get('region_id', 1) or 1)
-                    if (map_id, BATTLE_CAMP_ATTACKER, int(born_place_id)) in self._TRAINING_SCENE_SLOT_REGION_FALLBACK:
-                        born_place_id = self._TRAINING_SCENE_SLOT_REGION_FALLBACK[(map_id, BATTLE_CAMP_ATTACKER, int(born_place_id))]
-                    veh_born_pkt = build_rsp_vehicle_born_place(int(born_place_id))
-                    p.send_raw(veh_born_pkt)
-                    self._log(f"sent RspVehicleBornPlace (0x3F5) born_place_id={born_place_id} to bid={p.bid} uid={p.uid}")
-        else:
-            self.stage = GAME_STAGE_BATTLE
-            stage_pkt = build_rsp_game_stage(
-                timestamp=ts,
-                game_stage=GAME_STAGE_BATTLE,
-                total_time=1800,
-                remain_time=1800,
+            # Bomb regions for Bomb / EliminateBomb modes
+            if mode_id in (4, 5):
+                bomb_zones = self._get_active_bomb_zones()
+                bomb_pkt = build_rsp_spawn_bomb_region(list(bomb_zones))
+                self.broadcast(bomb_pkt)
+
+    def send_game_start_to_player(self, player: BattlePlayer) -> None:
+        """Send game start synchronization packets to a late-loading or rejoining player."""
+        if not player or not player.sock:
+            return
+        with self._lock:
+            if not self._started:
+                return
+            map_id = int(self.game_state.get('map_id', 1) or 1)
+            mode_id = int(self.game_state.get('mode_id', 0) or 0)
+            ts = int(getattr(self, '_game_start_ts', 0) or time.time())
+            stage = self.stage or (GAME_STAGE_PREPARE if mode_id != 3 else GAME_STAGE_BATTLE)
+
+            # 1. RspBattleLoadSuccess directly to this player
+            success_pkt = build_rsp_battle_load_success(player.bid)
+            player.send_raw(success_pkt)
+            player._load_success_sent = True
+            self._log(f"catchup: sent RspBattleLoadSuccess to bid={player.bid} uid={player.uid}")
+
+            # 2. RspGameStart
+            start_pkt = build_rsp_game_start(ts)
+            player.send_raw(start_pkt)
+            self._log(f"catchup: sent RspGameStart ts={ts} to bid={player.bid} uid={player.uid}")
+
+            # 3. RspGameStage with accurate elapsed/remain time
+            stage_ts, stage_total_ms, stage_remain_ms = _resolve_stage_sync_payload(
+                session=self,
+                game_state=self.game_state,
+                game_stage=stage,
             )
-            self.broadcast(stage_pkt)
+            stage_pkt = build_rsp_game_stage(
+                timestamp=stage_ts,
+                game_stage=stage,
+                total_time=stage_total_ms,
+                remain_time=stage_remain_ms,
+            )
+            player.send_raw(stage_pkt)
+            self._log(
+                f"catchup: sent RspGameStage stage={stage} total={stage_total_ms} remain={stage_remain_ms} "
+                f"to bid={player.bid} uid={player.uid}"
+            )
+
+            # 4. If prepare stage and attacker: RspVehicleBornPlace
+            if stage == GAME_STAGE_PREPARE and getattr(player, 'camp', 1) == BATTLE_CAMP_ATTACKER:
+                born_place_id = _resolve_attacker_vehicle_born_place(player, self)
+                veh_born_pkt = build_rsp_vehicle_born_place(int(born_place_id))
+                player.send_raw(veh_born_pkt)
+                self._log(f"catchup: sent RspVehicleBornPlace born_place_id={born_place_id} to attacker bid={player.bid} uid={player.uid}")
+
+            # 5. RspCriticalRegionState
+            crit_pkt = build_rsp_critical_region_state(CRITICAL_REGION_STATE_ONLY_DEFENDERS)
+            player.send_raw(crit_pkt)
+
+            # 6. RspSpawnBombRegion (if bomb mode)
+            if mode_id in (4, 5):
+                bomb_zones = self._get_active_bomb_zones()
+                bomb_pkt = build_rsp_spawn_bomb_region(list(bomb_zones))
+                player.send_raw(bomb_pkt)
+
+    def handle_round_end(
+        self,
+        winner_camp: int,
+        reason: int,
+        replay_bid: int = 0,
+        replay_dead: int = 0,
+        replay_pos: tuple[float, float, float] | None = None,
+    ):
+        with self._lock:
+            if self._round_finished:
+                return
+            self._round_finished = True
+
+            if winner_camp == BATTLE_CAMP_ATTACKER:
+                self.attacker_score += 1
+                camp_name = "Attackers"
+            elif winner_camp == BATTLE_CAMP_DEFENDER:
+                self.defender_score += 1
+                camp_name = "Defenders"
+            else:
+                camp_name = "None"
+
+            self._log(
+                f"[RoundEnd] Round #{self.round_num} Over -> {camp_name} Win! "
+                f"Score: Attacker {self.attacker_score} : {self.defender_score} Defender "
+                f"(reason={reason}, killer={replay_bid}, victim={replay_dead})"
+            )
+
+            # 1. Send RspBattleRoundResult (0x7B) tailored per player:
+            # result=True if player's camp == winner_camp, False otherwise.
+            # This ensures each client increments SelfTeamWinTimes vs OtherTeamWinTimes properly.
+            for p in self.players.values():
+                p_win = (getattr(p, 'camp', None) == winner_camp) and (winner_camp != BATTLE_CAMP_NO_CAMP)
+                round_pkt = build_rsp_battle_round_result(
+                    round_index=self.round_num,
+                    result=p_win,
+                    reason=reason,
+                    replay_bid=replay_bid,
+                    replay_dead=replay_dead,
+                    replay_pos=replay_pos,
+                    replay_mode=1,
+                )
+                p.send_raw(round_pkt)
+                try:
+                    p.send_raw(build_rsp_round_points(p.uid or 1000001, []))
+                except Exception:
+                    pass
+
+            self.broadcast_players_result()
+
+            def _transition_worker():
+                try:
+                    # Give clients enough time to finish watching the killcam before restarting.
+                    # On client, murderer card takes ~3.5s and replay takes ~8-10s (total ~14.0s).
+                    # If there's no killcam (e.g. timeout / defuse), wait ~4.0s.
+                    wait_sec = 14.5 if (replay_bid and replay_bid > 0) else 4.0
+                    self._log(f"[RoundTransition] Waiting {wait_sec:.1f}s for killcam/round result replay to finish on clients...")
+                    time.sleep(wait_sec)
+
+                    with self._lock:
+                        mode_id = int(self.game_state.get('mode_id', 4) or 4)
+                        target_score = 1 if mode_id == 3 else 3
+
+                        if self.attacker_score >= target_score or self.defender_score >= target_score:
+                            # ── Match over ──────────────────────────────────────────────
+                            self._log(
+                                f"[MatchEnd] Target score reached: Attacker {self.attacker_score} : "
+                                f"{self.defender_score} Defender. Sending match end packets."
+                            )
+                            res_pkt = build_rsp_battle_result(
+                                reason=reason,
+                                win_camp=winner_camp,
+                                replay_bid=replay_bid,
+                            )
+                            self.broadcast(res_pkt)
+                            self.broadcast_players_result()
+                            over_pkt = build_rsp_battle_over(reason=BATTLE_OVER_REASON_NORMAL_END)
+                            self.broadcast(over_pkt)
+
+                            # Notify lobby callback that the match is over to trigger MVP/BattleFinalResult screen
+                            cb = globals().get("ON_ROUND_END_CALLBACK")
+                            if cb is not None:
+                                try:
+                                    cb(
+                                        self.battle_id,
+                                        self.round_num,
+                                        winner_camp,
+                                        self.attacker_score,
+                                        self.defender_score,
+                                        is_match_end=True,
+                                    )
+                                except TypeError:
+                                    try:
+                                        cb(self.battle_id, self.round_num, winner_camp)
+                                    except Exception as cb_err:
+                                        self._log(f"[MatchEnd] ON_ROUND_END_CALLBACK fallback error: {cb_err}")
+                                except Exception as cb_err:
+                                    self._log(f"[MatchEnd] ON_ROUND_END_CALLBACK error: {cb_err}")
+                            return
+
+                        # ── Round continues ─────────────────────────────────────────────
+                        self.round_num += 1
+                        self.game_state["round"] = self.round_num
+                        self.game_state["attacker_score"] = self.attacker_score
+                        self.game_state["defender_score"] = self.defender_score
+
+                        # Reset per-round session state
+                        self._round_finished = False
+                        self._started = False
+                        self._game_start_sent = False
+                        self._start_scheduled = False
+                        self._fallback_timer_armed = False
+                        self._fallback_force_started = False
+                        self._near_loaded_timer_armed = False
+                        self._last_player_joined_at = time.time()
+                        self._battle_stage_started_at = None
+                        self._prep_stage_started_at = None
+                        self.defuser_installed = False
+                        self.defuser_installed_at = None
+                        self.critical_region_state = CRITICAL_REGION_STATE_ONLY_DEFENDERS
+                        self.critical_progress_notify_state = None
+                        self.capture_progress = 0.0
+                        self._last_progress_broadcast_at = 0.0
+                        self._overtime_logged = False
+
+                    # Push updated RspBattleInfo (1029) via lobby callback so client resets BattleIsFinish=0 and updates scores
+                    cb = globals().get("ON_ROUND_END_CALLBACK")
+                    if cb is not None:
+                        try:
+                            self._log(
+                                f"[RoundTransition] Notifying lobby of Round #{self.round_num} start "
+                                f"(scores: Attacker {self.attacker_score} : {self.defender_score} Defender)"
+                            )
+                            cb(
+                                self.battle_id,
+                                self.round_num,
+                                winner_camp,
+                                self.attacker_score,
+                                self.defender_score,
+                                is_match_end=False,
+                            )
+                        except TypeError:
+                            try:
+                                cb(self.battle_id, self.round_num, winner_camp)
+                            except Exception as cb_err:
+                                self._log(f"[RoundTransition] ON_ROUND_END_CALLBACK fallback error: {cb_err}")
+                        except Exception as cb_err:
+                            self._log(f"[RoundTransition] ON_ROUND_END_CALLBACK error: {cb_err}")
+
+                    # ── PreBattle Selection Phase (Agent, Spawn Point, Loadout Selection) ──
+                    # Clients receive RspRoomStart (1014) and transition to PreBattleState.
+                    # Wait up to prebattle_wait_max (e.g. 25.0s), or break early if all players confirm ready.
+                    prebattle_wait_max = 25.0
+                    t_prebattle_start = time.time()
+                    self._log(f"[RoundTransition] PreBattle selection active (waiting up to {prebattle_wait_max:.1f}s or until players confirm)...")
+                    while (time.time() - t_prebattle_start) < prebattle_wait_max:
+                        r_state = _get_live_room_state()
+                        r_players = r_state.get("players", {}) if isinstance(r_state, dict) else {}
+                        if len(r_players) > 0:
+                            all_ready = all(
+                                bool(p.get("is_ready")) or int(p.get("prebattle_stage", 1) or 1) >= 4
+                                for p in r_players.values() if isinstance(p, dict)
+                            )
+                            if all_ready:
+                                self._log(f"[RoundTransition] All players confirmed ready early ({time.time() - t_prebattle_start:.1f}s)!")
+                                break
+                        elif len(self.players) <= 1:
+                            if (time.time() - t_prebattle_start) >= 2.0:
+                                break
+                        time.sleep(0.5)
+
+                    with self._lock:
+                        map_id_int = int(self.game_state.get('map_id', 1) or 1)
+                        mode_id_int = int(self.game_state.get('mode_id', 0) or 0)
+
+                        # Clean up scene objects and wall/barricade states for fresh round
+                        self.broken_security_cameras.clear()
+                        self.placed_scene_tools.clear()
+                        self.blocking_board_states.clear()
+                        self.blocking_board_hp.clear()
+                        self.armor_packages.clear()
+
+                        if _should_seed_blocking_boards(self.game_state):
+                            _session_seed_training_blocking_boards_from_manifest(self, map_id_int)
+
+                        # Query live room players to update player character / loadout / spawn point
+                        r_state = _get_live_room_state()
+                        r_players = r_state.get("players", {}) if isinstance(r_state, dict) else {}
+
+                        for p in self.players.values():
+                            p.hp = 100
+                            p.is_dead = False
+                            p.loaded = False
+                            p.progress = 0.0
+                            p._last_progress_at = 0.0
+                            p._vehicle_born_sent = False
+                            p._gameplay_sync_sent = False
+                            p._round_loaded_received = False
+                            p._load_success_sent = False
+                            p.last_character_pos = None
+                            p.born_region_id = None
+                            p.last_unmanned_vehicle_id = 0
+                            p.last_unmanned_vehicle_pose = {}
+                            p.grenade_count = 2
+                            p.hammer_count = 15
+                            if hasattr(p, 'gadget_counts'):
+                                p.gadget_counts.clear()
+                            if hasattr(p, 'skill_cooldown_end'):
+                                p.skill_cooldown_end.clear()
+                            if hasattr(p, 'active_skills_start'):
+                                p.active_skills_start.clear()
+                            if hasattr(p, 'grenades_pos'):
+                                p.grenades_pos.clear()
+                            if hasattr(p, 'grenades_timeout'):
+                                p.grenades_timeout.clear()
+                            if hasattr(p, 'grenades_begin_time'):
+                                p.grenades_begin_time.clear()
+                            p.last_monitor_id = 0
+                            p.last_blocking_board_id = 0
+                            if hasattr(p, 'active_scene_tools'):
+                                p.active_scene_tools.clear()
+
+                            p_room = r_players.get(str(p.uid)) or r_players.get(int(p.uid)) or {}
+                            if p_room.get("character_id"):
+                                p.character_id = int(p_room["character_id"])
+                            if p_room.get("primary_weapon"):
+                                p.primary_weapon = copy.deepcopy(p_room["primary_weapon"])
+                            if p_room.get("secondary_weapon"):
+                                p.secondary_weapon = copy.deepcopy(p_room["secondary_weapon"])
+                            if p_room.get("main_skill_id"):
+                                p.main_skill_id = int(p_room["main_skill_id"])
+                            if p_room.get("sub_skill_id"):
+                                p.sub_skill_id = int(p_room["sub_skill_id"])
+                            if p_room.get("spawn_region_id") is not None:
+                                p.born_region_id = int(p_room["spawn_region_id"])
+
+                            try:
+                                if p.sock:
+                                    p.send_raw(build_rsp_player_relive(p.bid))
+                                    p.send_raw(build_rsp_character_hp_changed(
+                                        bid=p.bid,
+                                        base_hp=100,
+                                        extra_hp=0,
+                                        damage_type=0,
+                                    ))
+                                    p.send_raw(build_rsp_reset_all_weapon_item_num())
+                            except Exception as p_err:
+                                self._log(f"[RoundTransition] Error sending round reset to player {p.bid}: {p_err}")
+
+                        # Broadcast fresh RspRoomLoading (0x3EE) to each player with updated round_num.
+                        # Client BattleState receives LOAD_MAP with new round, triggers UnloadBattle and BattleStateLoading.
+                        for p in self.players.values():
+                            if p.sock:
+                                try:
+                                    room_loading_pkt = self.build_room_loading(p)
+                                    p.send_raw(room_loading_pkt)
+                                    p._last_room_loading_sent_at = time.time()
+                                    self._log(
+                                        f"[RoundTransition] Sent RspRoomLoading ({len(room_loading_pkt)}B) "
+                                        f"for Round #{self.round_num} to bid={p.bid} uid={p.uid}"
+                                    )
+                                except Exception as p_err:
+                                    self._log(f"[RoundTransition] Error sending RspRoomLoading to player {p.bid}: {p_err}")
+
+                        self._log(
+                            f"[RoundTransition] Session reset for Round #{self.round_num}. "
+                            "Awaiting ReqRoomLoaded / arming transition fallback."
+                        )
+
+                        # Arm adaptive loading fallback timer for Round loading
+                        self._last_player_joined_at = time.time()
+                        self._fallback_timer_armed = False
+                        self._fallback_force_started = False
+                        self._near_loaded_timer_armed = False
+                        self._arm_loading_fallback_timer()
+
+                except Exception as e:
+                    self._log(f"error in round transition worker: {e}")
+
+            t = threading.Thread(target=_transition_worker, daemon=True)
+            t.start()
 
     def tick(self):
         with self._lock:
-            if not self._started or self._round_finished or self._battle_stage_started_at is None:
+            if not self._started or self._round_finished:
                 return
 
             now = time.time()
-            elapsed = now - self._battle_stage_started_at
+            map_id = int(self.game_state.get('map_id', 1) or 1)
+            mode_id = int(self.game_state.get('mode_id', 0) or 0)
 
             # 1. Preparation phase transition (45s) -> Action Phase (180s)
-            if getattr(self, 'stage', GAME_STAGE_BATTLE) == GAME_STAGE_PREPARE:
-                prep_duration = 45.0
-                if elapsed >= prep_duration:
-                    self.stage = GAME_STAGE_BATTLE
-                    self._battle_stage_started_at = now
-                    ts = int(now)
-                    stage_pkt = build_rsp_game_stage(
-                        timestamp=ts,
-                        game_stage=GAME_STAGE_BATTLE,
-                        total_time=180,
-                        remain_time=180,
-                    )
-                    self.broadcast(stage_pkt)
-                    crit_pkt = build_rsp_critical_region_state(CRITICAL_REGION_STATE_BOTH_PLAYERS)
-                    self.broadcast(crit_pkt)
-                    _guide_set_critical_region_state(self, CRITICAL_REGION_STATE_BOTH_PLAYERS)
-                    self._log("[Session] Preparation phase ended -> Transitioned to GAME_STAGE_BATTLE (180s)!")
+            if self.stage == GAME_STAGE_PREPARE:
+                if self._prep_stage_started_at is not None:
+                    prep_elapsed = now - self._prep_stage_started_at
+                    if prep_elapsed >= 45.0:
+                        self.stage = GAME_STAGE_BATTLE
+                        self._battle_stage_started_at = now
+                        stage_ts, battle_total_ms, battle_remain_ms = _resolve_stage_sync_payload(
+                            session=self,
+                            game_state=self.game_state,
+                            game_stage=GAME_STAGE_BATTLE,
+                        )
+                        stage_pkt = build_rsp_game_stage(
+                            timestamp=stage_ts,
+                            game_stage=GAME_STAGE_BATTLE,
+                            total_time=battle_total_ms,
+                            remain_time=battle_remain_ms,
+                        )
+                        self.broadcast(stage_pkt)
+                        crit_pkt = build_rsp_critical_region_state(CRITICAL_REGION_STATE_ONLY_DEFENDERS)
+                        self.broadcast(crit_pkt)
+                        _guide_set_critical_region_state(self, CRITICAL_REGION_STATE_ONLY_DEFENDERS)
+                        self.critical_region_state = CRITICAL_REGION_STATE_ONLY_DEFENDERS
+                        self.capture_progress = 0.0
+                        self._last_progress_broadcast_at = 0.0
+                        self._overtime_logged = False
+                        self._log("[Session] Preparation phase ended -> Transitioned to GAME_STAGE_BATTLE (180s)!")
                 return
 
-            # 2. Action phase timeout (180s) -> Round won by Defenders
-            if getattr(self, 'stage', GAME_STAGE_BATTLE) == GAME_STAGE_BATTLE:
-                mode_id = int(self.game_state.get('mode_id', 0) or 0)
+            # 2. Action phase: Secure Area capture logic & timeout / bomb timer
+            if self.stage == GAME_STAGE_BATTLE and self._battle_stage_started_at is not None:
                 if mode_id == 3:
-                    return  # Training mode has 1800s / unlimited time
-                battle_duration = 180.0
-                if elapsed >= battle_duration:
-                    self._round_finished = True
-                    self._log("[Session] Round timer reached 0:00! Defenders win on TimeOut.")
-                    res_pkt = build_rsp_battle_result(reason=3, win_camp=BATTLE_CAMP_DEFENDER)
-                    self.broadcast(res_pkt)
-                    over_pkt = build_rsp_battle_over(reason=BATTLE_OVER_REASON_TIME_END)
-                    self.broadcast(over_pkt)
+                    return  # Training mode
+
+                dt = max(0.0, min(1.0, now - getattr(self, '_last_tick_time', now)))
+                self._last_tick_time = now
+
+                # Capture logic for Secure Area (Mode 1 / Guide Mode 2)
+                is_secure_area = (mode_id in (1, 2)) or (mode_id not in (4, 5) and not getattr(self, 'defuser_installed', False))
+                n_attackers_in_zone = 0
+                n_defenders_in_zone = 0
+
+                if is_secure_area and not self._round_finished:
+                    center = self._get_critical_region_center()
+                    zone_radius = 6.5
+                    zone_height = 2.8
+
+                    for p in self.players.values():
+                        if getattr(p, "is_dead", False) or getattr(p, "hp", 100) <= 0:
+                            continue
+                        # ONLY living human operators count! Drones must NOT capture or contest!
+                        pos = getattr(p, "last_character_pos", None)
+                        if not pos:
+                            continue
+
+                        dx = pos[0] - center[0]
+                        dy = abs(pos[1] - center[1])
+                        dz = pos[2] - center[2]
+                        if (dx * dx + dz * dz) <= (zone_radius * zone_radius) and dy <= zone_height:
+                            if p.camp == BATTLE_CAMP_ATTACKER:
+                                n_attackers_in_zone += 1
+                            elif p.camp == BATTLE_CAMP_DEFENDER:
+                                n_defenders_in_zone += 1
+
+                    # Evaluate current state:
+                    # Both alive on point -> Contested (3)
+                    # Only alive attackers on point -> Securing (1)
+                    # Only alive defenders on point -> Defenders control (2)
+                    # Nobody on point -> None (0)
+                    if n_attackers_in_zone > 0 and n_defenders_in_zone > 0:
+                        new_state = CRITICAL_REGION_STATE_BOTH_PLAYERS
+                    elif n_attackers_in_zone > 0 and n_defenders_in_zone == 0:
+                        new_state = CRITICAL_REGION_STATE_ONLY_ATTACKERS
+                    elif n_attackers_in_zone == 0 and n_defenders_in_zone > 0:
+                        new_state = CRITICAL_REGION_STATE_ONLY_DEFENDERS
+                    else:
+                        new_state = CRITICAL_REGION_STATE_NONE_PLAYERS
+
+                    # Broadcast state change
+                    if new_state != getattr(self, 'critical_region_state', None):
+                        self.critical_region_state = new_state
+                        self.broadcast(build_rsp_critical_region_state(new_state))
+                        _guide_set_critical_region_state(self, new_state)
+                        self._log(
+                            f"[SecureArea] Critical region state -> {new_state} "
+                            f"(attackers_in_zone={n_attackers_in_zone}, defenders_in_zone={n_defenders_in_zone})"
+                        )
+
+                    # Advance or decay capture progress (15.0 seconds total hold_on_time)
+                    hold_time = 15.0
+                    send_progress = False
+
+                    if new_state == CRITICAL_REGION_STATE_ONLY_ATTACKERS:
+                        self.capture_progress = min(100.0, self.capture_progress + (dt / hold_time) * 100.0)
+                        if getattr(self, 'critical_progress_notify_state', None) != CRITICAL_PROGRESS_STATE_UP:
+                            self.critical_progress_notify_state = CRITICAL_PROGRESS_STATE_UP
+                            self.broadcast(build_rsp_critical_progress_notify(CRITICAL_PROGRESS_STATE_UP))
+                            send_progress = True
+                        if (now - getattr(self, '_last_progress_broadcast_at', 0.0)) >= 0.5:
+                            send_progress = True
+
+                        if send_progress:
+                            self._last_progress_broadcast_at = now
+                            self.broadcast(build_rsp_critical_progress(speed_rate=1.0, percent=int(self.capture_progress)))
+
+                        # Check if fully secured
+                        if self.capture_progress >= 100.0:
+                            self._log("[SecureArea] Objective fully secured by Attackers (100%)! Attackers win on CriticalSuccess.")
+                            self.handle_round_end(winner_camp=BATTLE_CAMP_ATTACKER, reason=ROUND_END_REASON_CRITICAL_SUCCESS)
+                            return
+
+                    elif new_state == CRITICAL_REGION_STATE_BOTH_PLAYERS:
+                        # Contested: progress pauses/freezes
+                        if getattr(self, 'critical_progress_notify_state', None) != CRITICAL_PROGRESS_STATE_STAY:
+                            self.critical_progress_notify_state = CRITICAL_PROGRESS_STATE_STAY
+                            self.broadcast(build_rsp_critical_progress_notify(CRITICAL_PROGRESS_STATE_STAY))
+                            self.broadcast(build_rsp_critical_progress(speed_rate=0.0, percent=int(self.capture_progress)))
+
+                    else:
+                        # Only defenders or nobody: progress decays back down to 0
+                        if self.capture_progress > 0.0:
+                            self.capture_progress = max(0.0, self.capture_progress - (dt / hold_time) * 100.0)
+                            if getattr(self, 'critical_progress_notify_state', None) != CRITICAL_PROGRESS_STATE_DOWN:
+                                self.critical_progress_notify_state = CRITICAL_PROGRESS_STATE_DOWN
+                                self.broadcast(build_rsp_critical_progress_notify(CRITICAL_PROGRESS_STATE_DOWN))
+                                send_progress = True
+                            if (now - getattr(self, '_last_progress_broadcast_at', 0.0)) >= 0.5:
+                                send_progress = True
+                            if send_progress:
+                                self._last_progress_broadcast_at = now
+                                self.broadcast(build_rsp_critical_progress(speed_rate=1.0, percent=int(self.capture_progress)))
+                        else:
+                            self.critical_progress_notify_state = None
+
+                elapsed = now - self._battle_stage_started_at
+                if getattr(self, 'defuser_installed', False):
+                    installed_at = getattr(self, 'defuser_installed_at', None) or now
+                    if (now - installed_at) >= 45.0:
+                        self._log("[Session] Defuser bomb timer expired (45s)! Attackers win on BombTimeOut.")
+                        self.handle_round_end(winner_camp=BATTLE_CAMP_ATTACKER, reason=ROUND_END_REASON_BOMB_TIMEOUT)
+                else:
+                    battle_duration = 180.0
+                    if elapsed >= battle_duration:
+                        if is_secure_area and n_attackers_in_zone > 0:
+                            # Overtime! Attackers are securing or contesting the objective point
+                            if not getattr(self, '_overtime_logged', False):
+                                self._overtime_logged = True
+                                self._log("[SecureArea] 180s expired but Attackers in zone -> OVERTIME!")
+                        else:
+                            self._log("[Session] Round timer reached 0:00! Defenders win on TimeOut.")
+                            self.handle_round_end(winner_camp=BATTLE_CAMP_DEFENDER, reason=ROUND_END_REASON_TIMEOUT)
+
 
     def add_player(self, sock: socket.socket, addr: tuple) -> BattlePlayer:
         with self._lock:
@@ -7032,6 +8520,8 @@ class BattleSession:
             self._next_bid += 1
             player = BattlePlayer(sock, addr, bid)
             self.players[bid] = player
+            # Track last-join time for adaptive fallback timer
+            self._last_player_joined_at = time.time()
             return player
 
     def remove_player(self, bid: int, force: bool = False):
@@ -7062,9 +8552,14 @@ class BattleSession:
                 candidate._recv_buf = bytearray()
                 candidate._hb_recv_count = 0
                 candidate._hb_echo_count = 0
-                candidate.loaded = False
-                candidate.progress = 0.0
+                # Preserve loaded/progress if the player already completed loading
+                # before disconnecting — resetting them would break all_loaded() on rejoin.
+                if not candidate.loaded:
+                    candidate.progress = 0.0
+                candidate._last_progress_at = time.time()
                 candidate._load_success_sent = False
+                candidate._vehicle_born_sent = False
+                candidate._gameplay_sync_sent = False
                 candidate._spawn_probe_logged = False
                 candidate._preserve_on_disconnect = False
                 if old_sock is not sock:
@@ -7072,6 +8567,8 @@ class BattleSession:
                         old_sock.close()
                     except Exception:
                         pass
+                # Update last-join time for adaptive fallback timer
+                self._last_player_joined_at = time.time()
                 return candidate
         return None
 
@@ -7083,7 +8580,18 @@ class BattleSession:
 
     def all_loaded(self) -> bool:
         with self._lock:
-            return all(p.loaded for p in self.players.values()) and len(self.players) > 0
+            # In a multiplayer session, wait until all expected room players have connected
+            if len(self.players) > 1:
+                unconnected = [p for p in self.players.values() if p.sock is None and not p.loaded]
+                if unconnected and not getattr(self, '_fallback_force_started', False):
+                    created_at = getattr(self, '_created_at', 0.0) or getattr(self, '_last_player_joined_at', 0.0)
+                    if created_at and (time.time() - created_at < 15.0):
+                        return False
+
+            active_players = [p for p in self.players.values() if p.sock is not None]
+            if not active_players:
+                return False
+            return all(p.loaded or getattr(p, 'progress', 0.0) >= 1.0 for p in active_players)
 
     # mode_id -> CombatType mapping
     _COMBAT_TYPE_MAP = {
@@ -7141,16 +8649,19 @@ class BattleSession:
         (1, BATTLE_CAMP_DEFENDER, 35): ((-3.182, -6.966, 10.117), (0.0, -0.995634, 0.0, -0.093342)),
     }
 
-    # Fallback for UI slot-style region values (0..N) on map 1.
-    _TRAINING_SCENE_SLOT_REGION_FALLBACK: dict[tuple[int, int, int], int] = {
-        (1, BATTLE_CAMP_ATTACKER, 0): 26,
-        (1, BATTLE_CAMP_ATTACKER, 1): 6,
-        (1, BATTLE_CAMP_ATTACKER, 2): 16,
-        (1, BATTLE_CAMP_DEFENDER, 0): 11,
-        (1, BATTLE_CAMP_DEFENDER, 1): 1,
-        (1, BATTLE_CAMP_DEFENDER, 2): 21,
-        (1, BATTLE_CAMP_DEFENDER, 3): 31,
-    }
+    # Fallback for UI slot-style region values (0..N, 255) on all competitive maps (1, 2, 6, 7).
+    _TRAINING_SCENE_SLOT_REGION_FALLBACK: dict[tuple[int, int, int], int] = {}
+    for _m in (1, 2, 6, 7):
+        _TRAINING_SCENE_SLOT_REGION_FALLBACK[(_m, BATTLE_CAMP_ATTACKER, 0)] = 6
+        _TRAINING_SCENE_SLOT_REGION_FALLBACK[(_m, BATTLE_CAMP_ATTACKER, 1)] = 16
+        _TRAINING_SCENE_SLOT_REGION_FALLBACK[(_m, BATTLE_CAMP_ATTACKER, 2)] = 26
+        _TRAINING_SCENE_SLOT_REGION_FALLBACK[(_m, BATTLE_CAMP_ATTACKER, 255)] = 6
+
+        _TRAINING_SCENE_SLOT_REGION_FALLBACK[(_m, BATTLE_CAMP_DEFENDER, 0)] = 1
+        _TRAINING_SCENE_SLOT_REGION_FALLBACK[(_m, BATTLE_CAMP_DEFENDER, 1)] = 11
+        _TRAINING_SCENE_SLOT_REGION_FALLBACK[(_m, BATTLE_CAMP_DEFENDER, 2)] = 21
+        _TRAINING_SCENE_SLOT_REGION_FALLBACK[(_m, BATTLE_CAMP_DEFENDER, 3)] = 31
+        _TRAINING_SCENE_SLOT_REGION_FALLBACK[(_m, BATTLE_CAMP_DEFENDER, 255)] = 1
 
     # Guide mode (mode_id=2) spawn placement for level00_tra (map_id=3).
     # Coordinates extracted from scene hierarchy:
@@ -7179,16 +8690,17 @@ class BattleSession:
 
     _TRAINING_SPAWN_ANCHORS: dict[tuple[int, int], tuple[float, float, float]] = {
         # (map_id, camp) -> base (x, y, z)
-        # Map 1 calibration:
-        # attacker spawn should start on exterior approach side, defender indoors.
+        # Attacker starts on exterior approach, defender indoors near building center.
         (1, BATTLE_CAMP_ATTACKER): (0.0, 1.0, 14.0),
         (1, BATTLE_CAMP_DEFENDER): (0.0, 1.0, 0.0),
-        (2, BATTLE_CAMP_ATTACKER): (0.0, 1.0, 14.0),
-        (2, BATTLE_CAMP_DEFENDER): (0.0, 1.0, 0.0),
-        (6, BATTLE_CAMP_ATTACKER): (0.0, 1.0, 14.0),
-        (6, BATTLE_CAMP_DEFENDER): (0.0, 1.0, 0.0),
-        (7, BATTLE_CAMP_ATTACKER): (0.0, 1.0, 14.0),
-        (7, BATTLE_CAMP_DEFENDER): (0.0, 1.0, 0.0),
+        (2, BATTLE_CAMP_ATTACKER): (-2.34, 4.23, 46.53),
+        (2, BATTLE_CAMP_DEFENDER): (1.67, 3.80, 1.58),
+        (3, BATTLE_CAMP_ATTACKER): (-6.13, -2.38, -61.97),
+        (3, BATTLE_CAMP_DEFENDER): (4.81, -2.03, -7.93),
+        (6, BATTLE_CAMP_ATTACKER): (-26.41, 4.98, -30.05),
+        (6, BATTLE_CAMP_DEFENDER): (8.82, 0.25, 3.11),
+        (7, BATTLE_CAMP_ATTACKER): (40.54, 3.22, 28.21),
+        (7, BATTLE_CAMP_DEFENDER): (7.31, 4.26, -2.19),
     }
 
     @staticmethod
@@ -7197,31 +8709,31 @@ class BattleSession:
         if region_id < 0 or region_id == 255:
             return 0
 
-        # Training map (id=1): region ids may come either as UI slot index
+        # Competitive maps (1, 2, 6, 7): region ids come either as UI slot index
         # or as full spawn id from maps.lua attacker_born/defender_born arrays.
-        if map_id == 1:
+        if map_id in (1, 2, 6, 7):
             if camp == BATTLE_CAMP_ATTACKER:
                 if region_id in (0, 1, 2):
                     return region_id
-                if 26 <= region_id <= 30:
-                    return 0
                 if 6 <= region_id <= 10:
-                    return 1
+                    return 0
                 if 16 <= region_id <= 20:
+                    return 1
+                if 26 <= region_id <= 30:
                     return 2
-                return 1
+                return 0
             if camp == BATTLE_CAMP_DEFENDER:
                 if region_id in (0, 1, 2, 3):
                     return region_id
-                if 11 <= region_id <= 15:
-                    return 0
                 if 1 <= region_id <= 5:
+                    return 0
+                if 11 <= region_id <= 15:
                     return 1
                 if 21 <= region_id <= 25:
                     return 2
                 if 31 <= region_id <= 35:
                     return 3
-                return 1
+                return 0
 
         # Generic fallback for other maps/modes.
         if camp == BATTLE_CAMP_DEFENDER:
@@ -7240,9 +8752,12 @@ class BattleSession:
         camp = int(camp)
         region_id = int(region_id)
 
-        # Client prebattle sends slot ids (attacker: 255/0..2, defender: 0..3).
-        # On map 1 defender, slot ids 1..3 numerically overlap scene ids 1..3,
-        # so prefer explicit slot fallback first to avoid wrong-floor spawns.
+        # 1. Direct scene region match (e.g. 6, 16, 26 for attackers; 1, 11, 21, 31 for defenders)
+        direct = cls._TRAINING_SCENE_REGION_SPAWNS.get((map_id, camp, region_id))
+        if direct is not None:
+            return direct[0], direct[1], "training-scene-region-id"
+
+        # 2. UI slot fallback (attacker: 255/0..2, defender: 255/0..3)
         explicit_slot_region = cls._TRAINING_SCENE_SLOT_REGION_FALLBACK.get((map_id, camp, region_id))
         if explicit_slot_region is not None:
             explicit_slot_spawn = cls._TRAINING_SCENE_REGION_SPAWNS.get(
@@ -7251,19 +8766,15 @@ class BattleSession:
             if explicit_slot_spawn is not None:
                 return explicit_slot_spawn[0], explicit_slot_spawn[1], "training-scene-slot-explicit"
 
-        direct = cls._TRAINING_SCENE_REGION_SPAWNS.get((map_id, camp, region_id))
-        if direct is not None:
-            return direct[0], direct[1], "training-scene-region-id"
-
+        # 3. Slot index fallback calculation
         slot = cls._region_slot_index(map_id, camp, region_id)
         fallback_region = cls._TRAINING_SCENE_SLOT_REGION_FALLBACK.get((map_id, camp, slot))
-        if fallback_region is None:
-            return None
+        if fallback_region is not None:
+            fallback = cls._TRAINING_SCENE_REGION_SPAWNS.get((map_id, camp, int(fallback_region)))
+            if fallback is not None:
+                return fallback[0], fallback[1], "training-scene-slot-fallback"
 
-        fallback = cls._TRAINING_SCENE_REGION_SPAWNS.get((map_id, camp, int(fallback_region)))
-        if fallback is None:
-            return None
-        return fallback[0], fallback[1], "training-scene-slot-fallback"
+        return None
 
     @classmethod
     def _resolve_guide_scene_spawn_transform(
@@ -7378,7 +8889,7 @@ class BattleSession:
             if region_id > 0:
                 return region_id, f'game_state.{key}'
 
-        if int(mode_id) == 2:
+        if int(mode_id) in (1, 2):
             zone_id = _get_primary_target_zone_for_map(map_id)
             if zone_id is not None and zone_id > 0:
                 return int(zone_id), 'maps.target_zone[0]'
@@ -7426,12 +8937,24 @@ class BattleSession:
         gs = self.game_state
         pd = self.player_data
 
+        # Query active live room players dict
+        room_players_dict = {}
+        try:
+            r_state = _get_live_room_state()
+            if isinstance(r_state, dict) and isinstance(r_state.get("players"), dict):
+                room_players_dict = r_state["players"]
+        except Exception:
+            pass
+
         # Resolve character/weapon tailored for for_player
-        char_id = getattr(for_player, 'character_id', None) or int(gs.get('character_id', 0) or (1 if for_player.camp == 1 else 101))
-        pri_weapon = getattr(for_player, 'primary_weapon', None) or gs.get('primary_weapon', {'id': 10036, 'skin': 0, 'attachments': []})
-        sec_weapon = getattr(for_player, 'secondary_weapon', None) or gs.get('secondary_weapon', {'id': 10074, 'skin': 0, 'attachments': []})
-        main_skill = getattr(for_player, 'main_skill_id', None) or gs.get('main_skill_id', 295)
-        sub_skill = getattr(for_player, 'sub_skill_id', None) or gs.get('sub_skill_id', 299)
+        for_acc_id = for_player.uid or pd.get('uid', 1000001)
+        p_room_for_me = room_players_dict.get(str(for_acc_id)) or room_players_dict.get(int(for_acc_id)) or {}
+        char_id = getattr(for_player, 'character_id', None) or p_room_for_me.get('character_id') or int(gs.get('character_id', 0) or (1 if for_player.camp == 1 else 101))
+        def_loadout = _get_character_default_loadout(char_id, for_player.camp)
+        pri_weapon = getattr(for_player, 'primary_weapon', None) or p_room_for_me.get('primary_weapon') or gs.get('primary_weapon') or {'id': def_loadout['primary_weapon'], 'skin': 0, 'attachments': []}
+        sec_weapon = getattr(for_player, 'secondary_weapon', None) or p_room_for_me.get('secondary_weapon') or gs.get('secondary_weapon') or {'id': def_loadout['secondary_weapon'], 'skin': 0, 'attachments': []}
+        main_skill = getattr(for_player, 'main_skill_id', None) or p_room_for_me.get('main_skill_id') or gs.get('main_skill_id') or def_loadout['main_skill_id']
+        sub_skill = getattr(for_player, 'sub_skill_id', None) or p_room_for_me.get('sub_skill_id') or gs.get('sub_skill_id') or def_loadout['sub_skill_id']
         # Client CreateCharacterData reads region_id without null-check in load path,
         # so keep it always present in CharacterInfo.
         # Keep spawn-region and character region in sync. Prefer explicit
@@ -7467,15 +8990,15 @@ class BattleSession:
         if player_team not in (1, 2):
             player_team = 1
         map_id = gs.get('map_id', 1)
-        mode_id = gs.get('mode_id', 3)
+        mode_id = gs.get('mode_id', 4)
         try:
-            map_id_int = int(map_id)
+            map_id_int = int(map_id) if int(map_id) > 0 else 1
         except Exception:
             map_id_int = 1
         try:
-            mode_id_int = int(mode_id)
+            mode_id_int = int(mode_id) if int(mode_id) > 0 else 4
         except Exception:
-            mode_id_int = 3
+            mode_id_int = 4
         # IMPORTANT:
         # do not derive critical_region_id from spawn-region selection.
         # SceneDesc.critical_region_id participates in mode logic and using
@@ -7523,6 +9046,13 @@ class BattleSession:
         attacker_list = []
         defender_list = []
 
+        r_state_cur = _get_live_room_state()
+        bomb_carrier_uid = 0
+        if isinstance(r_state_cur, dict):
+            bomb_carrier_uid = _safe_int(r_state_cur.get("bomb_carrier_uid"), 0)
+        if not bomb_carrier_uid:
+            bomb_carrier_uid = _safe_int(gs.get("bomb_carrier_uid"), 0)
+
         all_players_to_include = list(self.players.values())
         if not any(p.bid == for_player.bid for p in all_players_to_include):
             all_players_to_include.append(for_player)
@@ -7530,18 +9060,21 @@ class BattleSession:
 
         for p in all_players_to_include:
             p_acc_id = p.uid or (pd.get('uid', 1000001) if p.bid == for_player.bid else 1000000 + p.bid)
-            p_team = p.team or player_team
-            p_camp = p.camp or player_camp
+            p_room = room_players_dict.get(str(p_acc_id)) or room_players_dict.get(int(p_acc_id)) or {}
+
+            p_camp = getattr(p, 'camp', None) or p_room.get("camp") or player_camp
             try:
                 p_camp = int(p_camp)
             except Exception:
                 p_camp = player_camp
-            if p_camp == BATTLE_CAMP_DEFENDER:
-                p_team = 2
-            else:
-                p_team = 1
+            p_team = 2 if p_camp == BATTLE_CAMP_DEFENDER else 1
 
-            p_region = getattr(p, 'born_region_id', None) or region_id
+            p_region = getattr(p, 'born_region_id', None)
+            if p_region is None:
+                p_region = p_room.get("region_id") if p_room.get("region_id") is not None else p_room.get("spawn_region_id")
+            if p_region is None:
+                p_region = region_id
+
             p_spawn_pos, p_spawn_rot, _ = self._resolve_spawn_transform(
                 map_id=map_id_int,
                 mode_id=mode_id_int,
@@ -7552,35 +9085,94 @@ class BattleSession:
             if p.bid > 1:
                 p_spawn_pos = (p_spawn_pos[0] + (p.bid - 1) * 1.5, p_spawn_pos[1], p_spawn_pos[2])
 
-            p_char_id = getattr(p, 'character_id', None) or (char_id if p.bid == for_player.bid else (1 if p_camp == 1 else 101))
+            p_char_id = getattr(p, 'character_id', None) or p_room.get("character_id") or (1 if p_camp == 1 else 101)
+            p_def = _get_character_default_loadout(p_char_id, p_camp)
+            p_allowed = _get_character_allowed_loadout(p_char_id, p_camp)
 
-            p_pri = getattr(p, 'primary_weapon', None)
+            p_pri = getattr(p, 'primary_weapon', None) or p_room.get("primary_weapon")
             if not isinstance(p_pri, dict) or not p_pri.get('id'):
-                p_pri = pri_weapon if p.bid == for_player.bid else {
-                    'id': 10026 if p_camp == BATTLE_CAMP_DEFENDER else 10036,
+                p_pri = {
+                    'id': p_def['primary_weapon'],
                     'skin': 0,
                     'attachments': [],
                 }
+            else:
+                # Sanitize: reject weapon that doesn't belong to this character
+                if int(p_pri.get('id') or 0) not in p_allowed['primary_weapons']:
+                    self._log(
+                        f"[LOADOUT-SANITIZE] bid={p.bid} char={p_char_id}: "
+                        f"primary weapon {p_pri.get('id')} not in allowed={p_allowed['primary_weapons']}; "
+                        f"resetting to default {p_def['primary_weapon']}"
+                    )
+                    p_pri = {'id': p_def['primary_weapon'], 'skin': 0, 'attachments': []}
+                else:
+                    # Preserve attachments (scopes, suppressors, etc.) from saved loadout.
+                    # _write_weapon already filters out any attachment with id <= 0.
+                    raw_atts = p_pri.get('attachments') or []
+                    safe_atts = []
+                    if isinstance(raw_atts, list):
+                        for a in raw_atts:
+                            if not isinstance(a, dict):
+                                continue
+                            a_id = int(a.get('id') or a.get('attachment_id') or a.get(0) or 0)
+                            a_skin = int(a.get('skin') or a.get(2) or 0)
+                            if a_id > 0:
+                                safe_atts.append({'id': a_id, 'skin': a_skin})
+                    p_pri = {'id': int(p_pri['id']), 'skin': int(p_pri.get('skin') or 0), 'attachments': safe_atts}
 
-            p_sec = getattr(p, 'secondary_weapon', None)
+            p_sec = getattr(p, 'secondary_weapon', None) or p_room.get("secondary_weapon")
             if not isinstance(p_sec, dict) or not p_sec.get('id'):
-                p_sec = sec_weapon if p.bid == for_player.bid else {
-                    'id': 10074,
+                p_sec = {
+                    'id': p_def['secondary_weapon'],
                     'skin': 0,
                     'attachments': [],
                 }
+            else:
+                if int(p_sec.get('id') or 0) not in p_allowed['secondary_weapons']:
+                    self._log(
+                        f"[LOADOUT-SANITIZE] bid={p.bid} char={p_char_id}: "
+                        f"secondary weapon {p_sec.get('id')} not in allowed={p_allowed['secondary_weapons']}; "
+                        f"resetting to default {p_def['secondary_weapon']}"
+                    )
+                    p_sec = {'id': p_def['secondary_weapon'], 'skin': 0, 'attachments': []}
+                else:
+                    raw_atts_s = p_sec.get('attachments') or []
+                    safe_atts_s = []
+                    if isinstance(raw_atts_s, list):
+                        for a in raw_atts_s:
+                            if not isinstance(a, dict):
+                                continue
+                            a_id = int(a.get('id') or a.get('attachment_id') or a.get(0) or 0)
+                            a_skin = int(a.get('skin') or a.get(2) or 0)
+                            if a_id > 0:
+                                safe_atts_s.append({'id': a_id, 'skin': a_skin})
+                    p_sec = {'id': int(p_sec['id']), 'skin': int(p_sec.get('skin') or 0), 'attachments': safe_atts_s}
 
-            p_skins = getattr(p, 'skins', None)
-            if not isinstance(p_skins, list) or len(p_skins) == 0:
-                p_skins = character_skins if p.bid == for_player.bid else [0]
+            p_skins = getattr(p, 'skins', None) or p_room.get("skins")
+            if not isinstance(p_skins, list):
+                p_skins = []
 
-            p_main_sk = getattr(p, 'main_skill_id', None)
-            if not p_main_sk:
-                p_main_sk = main_skill if p.bid == for_player.bid else (1101 if p_camp == BATTLE_CAMP_DEFENDER else 1001)
+            p_main_sk = getattr(p, 'main_skill_id', None) or p_room.get("main_skill_id")
+            if not p_main_sk or p_main_sk in (1001, 1101) or int(p_main_sk) not in p_allowed['main_skills']:
+                p_main_sk = p_def['main_skill_id']
 
-            p_sub_sk = getattr(p, 'sub_skill_id', None)
-            if p_sub_sk is None:
-                p_sub_sk = sub_skill if p.bid == for_player.bid else 0
+            p_sub_sk = getattr(p, 'sub_skill_id', None) or p_room.get("sub_skill_id")
+            if p_sub_sk is None or p_sub_sk == 0 or int(p_sub_sk) not in p_allowed['sub_skills']:
+                p_sub_sk = p_def['sub_skill_id']
+
+            p_name = getattr(p, 'name', None) or p_room.get("name") or (pd.get('name', 'Player') if p.bid == for_player.bid else f"Player{p_acc_id}")
+
+            if p_camp == BATTLE_CAMP_ATTACKER:
+                if bomb_carrier_uid > 0:
+                    p_have_defuser = (int(p_acc_id) == bomb_carrier_uid)
+                elif p_room.get("is_have_defuser") is not None:
+                    p_have_defuser = bool(p_room.get("is_have_defuser"))
+                elif have_defuser is not None:
+                    p_have_defuser = bool(have_defuser) and (int(p_acc_id) == (for_player.uid or pd.get('uid', 1000001)))
+                else:
+                    p_have_defuser = False
+            else:
+                p_have_defuser = False
 
             p_char_entry = {
                 'acc_id': int(p_acc_id),
@@ -7588,7 +9180,7 @@ class BattleSession:
                 'bid': p.bid,
                 'team': p_team,
                 'camp': p_camp,
-                'name': p.name or (pd.get('name', 'Player') if p.bid == for_player.bid else f"Player{p_acc_id}"),
+                'name': p_name,
                 'rotation': p_spawn_rot,
                 'position': p_spawn_pos,
                 'character_id': p_char_id,
@@ -7597,8 +9189,8 @@ class BattleSession:
                 'secondary_weapon': p_sec,
                 'main_skill_id': p_main_sk,
                 'sub_skill_id': p_sub_sk,
-                'region_id': region_id,
-                'is_have_defuser': have_defuser,
+                'region_id': p_region if p_region is not None else region_id,
+                'is_have_defuser': p_have_defuser,
                 'is_loaded': False,
             }
             if p_camp == BATTLE_CAMP_DEFENDER:
@@ -7606,20 +9198,88 @@ class BattleSession:
             else:
                 attacker_list.append(p_char_entry)
 
+        # Ensure neither attacker_list nor defender_list is empty in any mode.
+        # Client's BattleLoadData.RefillTeamCamp accesses Item[0] on both teams unconditionally;
+        # if either list is empty, client crashes with IndexOutOfRangeException.
+        if not defender_list:
+            dummy_bid = 6
+            dummy_spawn_pos, dummy_spawn_rot, _ = self._resolve_spawn_transform(
+                map_id=map_id_int,
+                mode_id=mode_id_int,
+                camp=BATTLE_CAMP_DEFENDER,
+                region_id=region_id,
+            )
+            defender_list.append({
+                'acc_id': 9900002,
+                'npc_id': -1,
+                'bid': dummy_bid,
+                'team': 2,
+                'camp': BATTLE_CAMP_DEFENDER,
+                'name': 'Defender',
+                'rotation': dummy_spawn_rot,
+                'position': dummy_spawn_pos,
+                'character_id': 101,
+                'skins': [],
+                'primary_weapon': {'id': 101, 'skin': 0, 'attachments': []},
+                'secondary_weapon': {'id': 201, 'skin': 0, 'attachments': []},
+                'main_skill_id': 101,
+                'sub_skill_id': 151,
+                'region_id': region_id,
+                'is_have_defuser': False,
+                'is_loaded': True,
+            })
+        if not attacker_list:
+            dummy_bid = 1
+            dummy_spawn_pos, dummy_spawn_rot, _ = self._resolve_spawn_transform(
+                map_id=map_id_int,
+                mode_id=mode_id_int,
+                camp=BATTLE_CAMP_ATTACKER,
+                region_id=region_id,
+            )
+            attacker_list.append({
+                'acc_id': 9900001,
+                'npc_id': -1,
+                'bid': dummy_bid,
+                'team': 1,
+                'camp': BATTLE_CAMP_ATTACKER,
+                'name': 'Attacker',
+                'rotation': dummy_spawn_rot,
+                'position': dummy_spawn_pos,
+                'character_id': 1,
+                'skins': [],
+                'primary_weapon': {'id': 1, 'skin': 0, 'attachments': []},
+                'secondary_weapon': {'id': 201, 'skin': 0, 'attachments': []},
+                'main_skill_id': 1,
+                'sub_skill_id': 151,
+                'region_id': region_id,
+                'is_have_defuser': False,
+                'is_loaded': True,
+            })
+
+        # In bomb mode, ensure at least one attacker carries the defuser if none was explicitly picked
+        if mode_id_int in (0, 1, 4) or gs.get('mode_id') in (0, 1, 4):
+            if attacker_list and not any(a.get('is_have_defuser') for a in attacker_list):
+                attacker_list[0]['is_have_defuser'] = True
+
         my_team = for_player.team or (1 if for_player.camp == 1 else 2)
 
         guide_id = None
         if int(mode_id_int) == 2:
             guide_id = gs.get('guide_id', 0) or None
-            critical_region_id = self.room_loading_critical_region_id
+
+        critical_region_id = self.room_loading_critical_region_id
+        r_state_cur = _get_live_room_state()
+        is_custom_room = bool(r_state_cur and isinstance(r_state_cur, dict) and r_state_cur.get("room_id"))
+        if is_custom_room:
+            combat_type = self._COMBAT_TYPE_MAP.get(mode_id_int, 4)
+        elif mode_id_int == 2:
+            combat_type = 5  # userguide_mode
+        elif mode_id_int == 3:
+            combat_type = 6  # train_mode
         else:
-            critical_region_id = None
+            combat_type = 1  # normal_mode
+        current_round = int(getattr(self, 'round_num', 1) or 1)
 
-        combat_type = self._COMBAT_TYPE_MAP.get(mode_id_int, mode_id_int)
-
-        # Production path: send full room-loading payload with selected character data.
-        # The previous diagnostic minimal packet (empty lists + critical_region_id=999)
-        # can keep client in heartbeat-only loop without progressing to load stage.
         return build_rsp_room_loading(
             my_team=my_team,
             combat_type=combat_type,
@@ -7627,9 +9287,9 @@ class BattleSession:
             mode_id=mode_id_int,
             attacker_list=attacker_list,
             defender_list=defender_list,
-            round_num=1,
             guide_id=guide_id,
             critical_region_id=critical_region_id,
+            round_num=current_round,
         )
 
 
@@ -7647,23 +9307,33 @@ def get_or_create_session(battle_id: int, game_state: dict, player_data: dict,
     with _sessions_lock:
         existing = _sessions.get(battle_id)
         if existing is not None:
-            with existing._lock:
-                is_empty = len(existing.players) == 0
-            # Recreate empty session to avoid stale per-run scene states.
-            if is_empty:
+            # If previous round is marked finished, recreate session for a fresh run
+            if getattr(existing, '_round_finished', False):
                 _sessions[battle_id] = BattleSession(
                     battle_id,
                     game_state,
                     player_data,
                     log_fn,
                 )
-        if battle_id not in _sessions:
-            _sessions[battle_id] = BattleSession(
-                battle_id,
-                game_state,
-                player_data,
-                log_fn,
-            )
+            # For single-player training mode, recreate only if all players disconnected after established session
+            elif _is_training_mode_game_state(existing.game_state):
+                with existing._lock:
+                    is_empty = len(existing.players) == 0
+                if is_empty and (time.time() - getattr(existing, 'created_at', 0.0) > 3.0):
+                    _sessions[battle_id] = BattleSession(
+                        battle_id,
+                        game_state,
+                        player_data,
+                        log_fn,
+                    )
+            return _sessions[battle_id]
+
+        _sessions[battle_id] = BattleSession(
+            battle_id,
+            game_state,
+            player_data,
+            log_fn,
+        )
         return _sessions[battle_id]
 
 
@@ -7780,6 +9450,10 @@ def _send_rsp_reset_item_num_ack(
     bid = int(getattr(player, 'bid', 1) or 1) & 0xFF
     synced_skills: list[str] = []
     resolved_skill_ids = _resolve_reset_skill_ids(session, game_state)
+    if player and hasattr(player, 'gadget_counts'):
+        for sk_id in list(player.gadget_counts.keys()):
+            if sk_id not in resolved_skill_ids:
+                resolved_skill_ids.append(sk_id)
     resolved_character_id = 0
     try:
         source_state = session.game_state if session is not None else game_state
@@ -7794,9 +9468,21 @@ def _send_rsp_reset_item_num_ack(
         if allow_reset_item <= 0:
             continue
 
-        init_number = int(cfg.get('init_number', 0) or 0)
+        if skill_id in (63, 64):
+            init_number = int(cfg.get('init_number', 2) if 'init_number' in cfg else 2)
+        elif skill_id == 159:
+            init_number = int(cfg.get('init_number', 15) if 'init_number' in cfg else 15)
+        else:
+            init_number = int(cfg.get('init_number', 0) or 0)
         cooldown_ms = int(round(float(cfg.get('cooldown_time', 0.0) or 0.0) * 1000.0))
         active_ms = int(round(float(cfg.get('active_time', 0.0) or 0.0) * 1000.0))
+
+        if player and hasattr(player, 'gadget_counts'):
+            player.gadget_counts[skill_id] = init_number
+            if skill_id in (63, 64):
+                player.grenade_count = init_number
+            elif skill_id == 159:
+                player.hammer_count = init_number
 
         if init_number >= 0:
             packets.append(build_rsp_sync_skill_num(bid, skill_id, init_number))
@@ -8030,8 +9716,7 @@ def _extract_wall_id_from_unique_id(value: object) -> int | None:
     if decoded is None:
         return None
     kind, local_id, _, _ = decoded
-    # Client DestroySceneObject path uses kind=4 for walls.
-    if kind != UNIQUE_ID_KIND_WALL:
+    if kind not in WALL_ENTRY_KINDS and kind != UNIQUE_ID_KIND_WALL:
         return None
     wall_id = int(local_id) & 0xFFFFFFFF
     if wall_id <= 0:
@@ -8202,7 +9887,7 @@ def _extract_wall_hit_from_unique_id(value: object) -> tuple[int, int] | None:
     if decoded is None:
         return None
     kind, local_id, index1, _ = decoded
-    if kind != UNIQUE_ID_KIND_WALL:
+    if kind not in WALL_ENTRY_KINDS and kind != UNIQUE_ID_KIND_WALL:
         return None
     wall_id = int(local_id) & 0xFFFFFFFF
     if wall_id <= 0:
@@ -8424,6 +10109,10 @@ def _ray_damage_point(
 
 def _extract_target_board_id_from_hit_target(hit_target: object) -> int | None:
     if isinstance(hit_target, dict):
+        # Character hit targets (containing hit_part or part_local_pos) are players, not barricade boards
+        if 'hit_part' in hit_target or 'part_local_pos' in hit_target:
+            return None
+
         for key in (
             'affected_id',
             'hit_target_id',
@@ -8470,7 +10159,6 @@ def _extract_target_board_id_from_hit_target(hit_target: object) -> int | None:
 
         for key in (
             'hit_target',
-            'target_character',
             'target',
         ):
             nested = hit_target.get(key)
@@ -8493,7 +10181,6 @@ def _extract_req_target_board_id_from_gun_fire(req: dict) -> int | None:
         if not isinstance(bullet, dict):
             continue
         for key in (
-            'target_character',
             'target',
             'hit_target',
         ):
@@ -8695,6 +10382,44 @@ def _collect_target_block_indices_from_hit_target(
         _collect_target_block_indices_from_hit_target(hit_target.get(key), out, seen)
 
 
+def _extract_static_object_ids_from_hit_target(hit_target: object, out: list[int], seen: set[int]):
+    if not isinstance(hit_target, dict):
+        return
+
+    for key in (
+        'affected_id',
+        'hit_target_id',
+        'target_id',
+        'item_uid',
+        'uid',
+        'id',
+        'target_uid',
+        'unique_id',
+    ):
+        raw_val = hit_target.get(key)
+        if raw_val is not None:
+            decoded = _decode_unique_id_components(raw_val)
+            if decoded is not None:
+                kind, local_id, index1, _ = decoded
+                
+                # Allow destruction for any non-structural/non-character object (drones, cameras, gadgets, props)
+                if kind not in (2, 3, 4, 5, 10, 21):
+                    try:
+                        uid_u64 = int(raw_val) if not isinstance(raw_val, float) else int(raw_val)
+                        if uid_u64 not in seen:
+                            seen.add(uid_u64)
+                            out.append(uid_u64)
+                    except (ValueError, TypeError):
+                        pass
+
+    for key in (
+        'hit_target',
+        'target_character',
+        'target',
+    ):
+        _extract_static_object_ids_from_hit_target(hit_target.get(key), out, seen)
+
+
 def _extract_req_target_block_indices_from_gun_fire(req: dict) -> list[int]:
     out: list[int] = []
     seen: set[int] = set()
@@ -8727,6 +10452,38 @@ def _extract_req_target_block_indices_from_melee_target(target: object) -> list[
     return out
 
 
+def _extract_static_object_ids_from_gun_fire(req: dict) -> list[int]:
+    out: list[int] = []
+    seen: set[int] = set()
+    bullets = req.get('bullets')
+    if not isinstance(bullets, list):
+        return out
+
+    for bullet in bullets:
+        if not isinstance(bullet, dict):
+            continue
+
+        for key in (
+            'target_character',
+            'target',
+            'hit_target',
+        ):
+            _extract_static_object_ids_from_hit_target(bullet.get(key), out, seen)
+
+        behurt_info = bullet.get('behurt_info')
+        if isinstance(behurt_info, dict):
+            _extract_static_object_ids_from_hit_target(behurt_info.get('target'), out, seen)
+
+    return out
+
+
+def _extract_static_object_ids_from_melee_target(target: object) -> list[int]:
+    out: list[int] = []
+    seen: set[int] = set()
+    _extract_static_object_ids_from_hit_target(target, out, seen)
+    return out
+
+
 def _extract_req_ray_samples_from_gun_fire(req: dict) -> list[dict]:
     out: list[dict] = []
     bullets = req.get('bullets')
@@ -8739,7 +10496,11 @@ def _extract_req_ray_samples_from_gun_fire(req: dict) -> list[dict]:
         ray = bullet.get('ray')
         if not isinstance(ray, dict):
             continue
-        out.append(ray)
+        r = dict(ray)
+        td = bullet.get('target_distance')
+        if td is not None and float(td) > 0.0:
+            r['target_distance'] = float(td)
+        out.append(r)
     return out
 
 
@@ -8751,9 +10512,14 @@ def _extract_req_ray_samples_from_melee_target(
     if isinstance(target, dict):
         hit_ray = target.get('hit_ray')
         if isinstance(hit_ray, dict):
-            out.append(hit_ray)
+            r = dict(hit_ray)
+            if 'target_distance' not in r and target.get('hit_distance') is not None:
+                r['target_distance'] = target.get('hit_distance')
+            out.append(r)
     if isinstance(forward_ray, dict):
-        out.append(forward_ray)
+        r = dict(forward_ray)
+        r.setdefault('target_distance', 2.2)
+        out.append(r)
     return out
 
 
@@ -8781,8 +10547,9 @@ def _extract_melee_damage_source(
         if isinstance(hit_ray, dict):
             return _ray_damage_point(hit_ray, target.get('hit_distance'))
     if isinstance(forward_ray, dict):
-        return _ray_damage_point(forward_ray)
+        return _ray_damage_point(forward_ray, 1.6)
     return (0.0, 0.0, 0.0)
+
 
 
 def _normalize_ray_direction(ray: object) -> tuple[float, float, float] | None:
@@ -8879,6 +10646,7 @@ def _resolve_training_target_hit_shape(content_config_id: int) -> dict[str, floa
 def _session_pick_training_target_hit_locked(
     session: BattleSession,
     bullet: dict,
+    has_structure_damage: bool = False,
 ) -> dict | None:
     ray = bullet.get('ray')
     if not isinstance(ray, dict):
@@ -8899,7 +10667,8 @@ def _session_pick_training_target_hit_locked(
             continue
     max_distance = TRAINING_TARGET_HIT_MAX_DISTANCE
     if explicit_distance > 0.0:
-        max_distance = min(max_distance, explicit_distance + 0.75)
+        tolerance = 3.0 if has_structure_damage else 0.15
+        max_distance = min(max_distance, explicit_distance + tolerance)
 
     best: dict | None = None
     for raw_uid, state in session.training_target_state.items():
@@ -8991,11 +10760,15 @@ def _session_collect_training_target_gun_hit_packets(
     debug_rows: list[str] = []
     now_ts = time.time()
 
+    target_block_indices = _extract_req_target_block_indices_from_gun_fire(req)
+    ray_samples = _extract_req_ray_samples_from_gun_fire(req)
+    has_structure_damage = bool(target_block_indices or ray_samples)
+
     with session._lock:
         for bullet_idx, bullet in enumerate(bullets):
             if not isinstance(bullet, dict):
                 continue
-            hit = _session_pick_training_target_hit_locked(session, bullet)
+            hit = _session_pick_training_target_hit_locked(session, bullet, has_structure_damage)
             if hit is None:
                 continue
 
@@ -9090,6 +10863,410 @@ def _session_collect_training_target_gun_hit_packets(
     return world_packets, personal_packets
 
 
+# Static Security Cameras mapped per scene: map_id -> list of (monitor_id, x, y, z)
+# Verified from decompiled Unity scene asset bundles:
+#   Map 1: level02_can (Cargo Dock / Canada): IDs 150..158
+#   Map 2: level03_mex (Mexico): IDs 226..233
+#   Map 3: level04_rus (Russia): IDs 284..290
+#   Map 4: level05_jpn (Japan): IDs 258..264
+STATIC_MAP_SECURITY_CAMERAS: dict[int, list[tuple[int, float, float, float]]] = {
+    1: [  # level02_can (Canada / Cargo Dock)
+        (150, -21.740, 2.596, -20.778),  # can_props_camera_Out01
+        (151, 28.175, 2.244, 26.599),    # can_props_camera_Out02
+        (152, 13.154, -3.793, -2.655),   # can_props_camera_B101
+        (153, -11.260, -3.799, -2.324),  # can_props_camera_B202
+        (154, -11.299, 1.009, 3.643),    # can_props_camera_F101
+        (155, 13.485, 4.656, 2.385),     # can_props_camera_F201
+        (156, -11.501, 4.658, -2.689),   # can_props_camera_F202
+        (157, -6.127, 8.313, 5.584),     # can_props_camera_F301
+        (158, 1.813, 8.310, -19.194),    # can_props_camera_F302
+    ],
+    2: [  # level03_mex (Mexico)
+        (226, -13.111, 6.070, -46.528),  # mex_camera_Out01
+        (227, -2.340, 4.226, 46.532),    # mex_camera_Out02
+        (228, 32.463, 5.885, -32.195),   # mex_camera_Out03
+        (229, 1.607, 3.247, -5.148),     # mex_camera_f1a
+        (230, 21.788, 3.249, -18.016),   # mex_camera_f1b
+        (231, -6.902, 3.247, 12.195),    # mex_camera_f1c
+        (232, 20.358, 6.897, 13.060),    # mex_camera_f2a
+        (233, 1.488, 6.898, -5.219),     # mex_camera_f2b
+    ],
+    3: [  # level04_rus (Russia)
+        (284, 48.330, 3.417, -28.810),   # can_props_camera_Out01
+        (285, -26.411, 4.977, -30.050),  # can_props_camera_Out02
+        (286, 41.145, 4.725, 34.760),    # can_props_camera_Out03
+        (287, 5.263, 3.228, -8.887),     # can_props_camera_F101
+        (288, -0.950, 3.221, 6.620),     # can_props_camera_F102
+        (289, -0.949, 7.876, 20.344),    # can_props_camera_F201
+        (290, -12.574, 7.878, -5.397),   # can_props_camera_F202
+    ],
+    4: [  # level05_jpn (Japan)
+        (258, -50.186, 3.110, -35.077),  # can_props_camera_Out01
+        (259, 40.539, 3.216, 28.208),    # can_props_camera_Out02
+        (260, -44.183, -1.897, 18.370),  # can_props_camera_Out03
+        (261, 10.350, -2.198, 9.273),    # can_props_camera_B101
+        (262, -27.858, 5.778, -4.466),   # can_props_camera_F101
+        (263, -0.970, 1.452, 6.625),     # can_props_camera_F102
+        (264, 39.892, 5.073, 15.005),    # can_props_camera_F201
+    ],
+}
+
+# Alias client map IDs (6=Russia, 7=Japan) to manifest map IDs (3=Russia, 4=Japan)
+STATIC_MAP_SECURITY_CAMERAS[6] = STATIC_MAP_SECURITY_CAMERAS[3]
+STATIC_MAP_SECURITY_CAMERAS[7] = STATIC_MAP_SECURITY_CAMERAS[4]
+
+
+def _detect_hit_scene_entities_from_rays(
+    session: BattleSession | None,
+    player: BattlePlayer | None,
+    rays: list[dict],
+    *,
+    max_range: float = 100.0,
+    has_structure_damage: bool = False,
+) -> list[dict]:
+    """
+    Ray-sphere hit detection against:
+      1. Placed operative gadgets (session.placed_scene_tools)
+      2. Active drones (player.last_unmanned_vehicle_pose)
+      3. Map security cameras (STATIC_MAP_SECURITY_CAMERAS)
+    Returns a list of hit targets sorted by hit distance.
+    """
+    if not session or not rays:
+        return []
+
+    hits: list[dict] = []
+    hit_uids: set[int] = set()
+
+    map_id = int(session.game_state.get('map_id', 1) or 1)
+
+    for item in rays:
+        if not isinstance(item, dict):
+            continue
+        ray = item.get('ray') if 'ray' in item else item
+        if not isinstance(ray, dict):
+            continue
+
+        raw_pos = ray.get('pos')
+        if isinstance(raw_pos, (tuple, list)) and len(raw_pos) >= 3:
+            ray_origin = (float(raw_pos[0]), float(raw_pos[1]), float(raw_pos[2]))
+        elif isinstance(raw_pos, dict):
+            ray_origin = (float(raw_pos.get('x', 0.0)), float(raw_pos.get('y', 0.0)), float(raw_pos.get('z', 0.0)))
+        else:
+            ray_origin = (0.0, 0.0, 0.0)
+
+        raw_dir = ray.get('dir')
+        if isinstance(raw_dir, (tuple, list)) and len(raw_dir) >= 3:
+            dx, dy, dz = float(raw_dir[0]), float(raw_dir[1]), float(raw_dir[2])
+        elif isinstance(raw_dir, dict):
+            dx, dy, dz = float(raw_dir.get('x', 0.0)), float(raw_dir.get('y', 0.0)), float(raw_dir.get('z', 0.0))
+        else:
+            dx, dy, dz = (0.0, 0.0, 1.0)
+
+        mag = math.sqrt(dx * dx + dy * dy + dz * dz)
+        if mag < 1e-6:
+            continue
+        ray_dir = (dx / mag, dy / mag, dz / mag)
+
+        explicit_distance = 0.0
+        for key in ('target_distance', 'distance', 'hit_distance'):
+            if key in item:
+                try:
+                    explicit_distance = max(explicit_distance, float(item.get(key, 0.0) or 0.0))
+                except Exception:
+                    pass
+
+        max_dist = max_range
+        if explicit_distance > 0.0:
+            tolerance = 1.0 if has_structure_damage else 0.45
+            max_dist = min(max_dist, explicit_distance + tolerance)
+
+        bullet_best: dict | None = None
+
+        # 1. Placed operative gadgets
+        for uid, t_data in list(session.placed_scene_tools.items()):
+            if uid in hit_uids:
+                continue
+            pos = t_data.get('pos')
+            if not isinstance(pos, (tuple, list)) or len(pos) < 3:
+                continue
+            center = (float(pos[0]), float(pos[1]), float(pos[2]))
+            t = _ray_sphere_hit_distance(ray_origin, ray_dir, center, 0.40)
+            if t is not None and 0.0 <= t <= max_dist:
+                hit_pos = (
+                    ray_origin[0] + ray_dir[0] * t,
+                    ray_origin[1] + ray_dir[1] * t,
+                    ray_origin[2] + ray_dir[2] * t,
+                )
+                cand = {
+                    'type': 'gadget',
+                    'uid': uid,
+                    'kind': t_data.get('kind', 0),
+                    'distance': t,
+                    'hit_pos': hit_pos,
+                    'owner_bid': t_data.get('owner_bid', 0),
+                }
+                if bullet_best is None or cand['distance'] < bullet_best['distance']:
+                    bullet_best = cand
+
+        # 2. Drones (all players)
+        for p in session.players.values():
+            vid = int(getattr(p, 'last_unmanned_vehicle_id', 0) or 0)
+            if vid <= 0 or vid in hit_uids:
+                continue
+            pose = getattr(p, 'last_unmanned_vehicle_pose', {})
+            if not isinstance(pose, dict) or 'pos_x' not in pose:
+                continue
+            center = (float(pose['pos_x']), float(pose['pos_y']), float(pose['pos_z']))
+            t = _ray_sphere_hit_distance(ray_origin, ray_dir, center, 0.40)
+            if t is not None and 0.0 <= t <= max_dist:
+                hit_pos = (
+                    ray_origin[0] + ray_dir[0] * t,
+                    ray_origin[1] + ray_dir[1] * t,
+                    ray_origin[2] + ray_dir[2] * t,
+                )
+                cand = {
+                    'type': 'drone',
+                    'uid': vid,
+                    'kind': 9,
+                    'distance': t,
+                    'hit_pos': hit_pos,
+                    'owner_bid': p.bid,
+                }
+                if bullet_best is None or cand['distance'] < bullet_best['distance']:
+                    bullet_best = cand
+
+        # 3. Security Cameras
+        # Note: Root mount is at cy, but camera hangs down ~0.35m. Tested with radius 1.0m
+        # and extra reach tolerance (+0.6m) so rays hitting the wall directly behind are accepted.
+        cams = STATIC_MAP_SECURITY_CAMERAS.get(map_id, [])
+        for cam_id, cx, cy, cz in cams:
+            cam_uid = _encode_unique_id_components(13, cam_id)
+            if cam_id in getattr(session, 'broken_security_cameras', set()) or cam_uid in hit_uids:
+                continue
+            center = (cx, cy - 0.35, cz)
+            t = _ray_sphere_hit_distance(ray_origin, ray_dir, center, 1.0)
+            if t is not None and 0.0 <= t <= (max_dist + 0.6):
+                hit_pos = (
+                    ray_origin[0] + ray_dir[0] * t,
+                    ray_origin[1] + ray_dir[1] * t,
+                    ray_origin[2] + ray_dir[2] * t,
+                )
+                cand = {
+                    'type': 'camera',
+                    'uid': cam_uid,
+                    'local_id': cam_id,
+                    'kind': 13,
+                    'distance': t,
+                    'hit_pos': hit_pos,
+                    'owner_bid': 0,
+                }
+                if bullet_best is None or cand['distance'] < bullet_best['distance']:
+                    bullet_best = cand
+
+        if bullet_best is not None:
+            hit_uids.add(bullet_best['uid'])
+            hits.append(bullet_best)
+
+    return hits
+
+
+def _session_apply_entity_destruction(
+    session: BattleSession,
+    attacker_bid: int,
+    destroy_type: int,
+    hit_entities: list[dict],
+    _log: Callable,
+) -> None:
+    """Apply destruction packets and state updates for hit gadgets, drones, and cameras."""
+    if not session or not hit_entities:
+        return
+
+    for hit in hit_entities:
+        obj_id = int(hit.get('uid', 0) or 0)
+        hit_pos = hit.get('hit_pos', (0.0, 0.0, 0.0))
+        target_type = hit.get('type')
+        kind = hit.get('kind', 0)
+        local_id = hit.get('local_id', 0)
+
+        attacker = session.players.get(attacker_bid)
+
+        if target_type == 'drone' or kind == 9:
+            drone_pkt = build_rsp_unmanned_vehicle_dead(
+                vehicle_id=obj_id,
+                attacker_bid=attacker_bid,
+                effect_type=1,
+            )
+            session.broadcast(drone_pkt)
+            session.broadcast(build_rsp_destroy_scene_object(
+                destroy_type,
+                hit_pos,
+                [obj_id],
+            ))
+            # Clear vehicle state on owner and force switch back to character view
+            owner_bid = hit.get('owner_bid')
+            for p in session.players.values():
+                if p.bid == owner_bid or getattr(p, 'last_unmanned_vehicle_id', 0) == obj_id:
+                    p.last_unmanned_vehicle_id = 0
+                    p.last_unmanned_vehicle_pose = {}
+                    session.broadcast(build_rsp_update_unmanned_vehicle_state(
+                        bid=p.bid,
+                        vehicle_id=obj_id,
+                        relation=VEHICLE_RELATION_NONE,
+                        need_switch_to_character=True,
+                    ))
+
+            # Award score points (+10 destroy enemy drone, or -10 team drone)
+            owner = session.players.get(owner_bid) if owner_bid else None
+            if attacker and getattr(attacker, 'uid', None):
+                is_enemy = (owner is None) or (getattr(owner, 'camp', 0) != getattr(attacker, 'camp', 0))
+                point_action = 15 if is_enemy else 14  # 15: DestroyEnemyItem (+10), 14: DestroyFriendItem (-10)
+                pts = 10 if is_enemy else -10
+                attacker.send_raw(build_rsp_game_points(attacker.uid, [{'action': point_action, 'point': pts}]))
+                _log(f"[Score] Player bid={attacker_bid} awarded {pts} points (action={point_action}) for destroying drone={obj_id}")
+
+            _log(f"[Destruction] Destroyed Drone vehicle_id={obj_id} by bid={attacker_bid}")
+
+        elif target_type == 'camera' or kind == 13:
+            cam_id = local_id if local_id > 0 else (obj_id & 0xFFFFFFFF)
+            if hasattr(session, 'broken_security_cameras'):
+                session.broken_security_cameras.add(cam_id)
+            cam_pkt = build_rsp_monitor_dead(
+                monitor_id=cam_id,
+                attacker_bid=attacker_bid,
+                effect_type=1,
+            )
+            session.broadcast(cam_pkt)
+            session.broadcast(build_rsp_destroy_scene_object(
+                destroy_type,
+                hit_pos,
+                [obj_id],
+            ))
+
+            # Security cameras belong to Defenders (camp 2). Attackers destroying them get +10 points.
+            if attacker and getattr(attacker, 'uid', None):
+                is_enemy = getattr(attacker, 'camp', 1) == 1  # Attacker camp destroying defender camera
+                point_action = 15 if is_enemy else 14
+                pts = 10 if is_enemy else -10
+                attacker.send_raw(build_rsp_game_points(attacker.uid, [{'action': point_action, 'point': pts}]))
+                _log(f"[Score] Player bid={attacker_bid} awarded {pts} points (action={point_action}) for destroying camera={cam_id}")
+
+            _log(f"[Destruction] Destroyed Security Camera monitor_id={cam_id} by bid={attacker_bid}")
+
+        elif target_type == 'gadget' or kind in (8, 14, 15, 16, 17, 18, 25, 28, 29, 37, 38) or obj_id in getattr(session, 'placed_scene_tools', {}):
+            del_tool_pkt = build_rsp_delete_scene_tool(
+                scene_tool_unique_id=obj_id,
+                kind=SCENE_TOOL_DELETE_KIND_DESTROY,
+                attacker_bid=attacker_bid,
+                effect_type=1,
+            )
+            session.broadcast(del_tool_pkt)
+            session.broadcast(build_rsp_destroy_scene_object(
+                destroy_type,
+                hit_pos,
+                [obj_id],
+            ))
+            if hasattr(session, 'placed_scene_tools') and obj_id in session.placed_scene_tools:
+                session.placed_scene_tools.pop(obj_id, None)
+
+            # Award score points for gadget destruction
+            owner_bid = hit.get('owner_bid')
+            owner = session.players.get(owner_bid) if owner_bid else None
+            if attacker and getattr(attacker, 'uid', None):
+                is_enemy = (owner is None) or (getattr(owner, 'camp', 0) != getattr(attacker, 'camp', 0))
+                point_action = 15 if is_enemy else 14
+                pts = 10 if is_enemy else -10
+                attacker.send_raw(build_rsp_game_points(attacker.uid, [{'action': point_action, 'point': pts}]))
+                _log(f"[Score] Player bid={attacker_bid} awarded {pts} points (action={point_action}) for destroying gadget={obj_id} (kind={kind})")
+
+            _log(f"[Destruction] Destroyed Gadget kind={kind} id={obj_id} by bid={attacker_bid}")
+
+        else:
+            session.broadcast(build_rsp_destroy_scene_object(
+                destroy_type,
+                hit_pos,
+                [obj_id],
+            ))
+            _log(f"[Destruction] Destroyed scene prop id={obj_id} by bid={attacker_bid}")
+
+
+def _session_apply_explosive_entity_destruction(
+    session: BattleSession | None,
+    attacker_bid: int,
+    explosion_pos: tuple[float, float, float],
+    radius: float = 4.5,
+    _log: Callable | None = None,
+    ignore_uids: set[int] | None = None,
+) -> None:
+    """Destroys gadgets, drones, and security cameras within explosive blast radius."""
+    if not session or explosion_pos == (0.0, 0.0, 0.0):
+        return
+    ex, ey, ez = explosion_pos
+    r_sq = radius * radius
+    hits: list[dict] = []
+    ignored = ignore_uids or set()
+
+    # 1. Placed Gadgets
+    for uid, t_data in list(session.placed_scene_tools.items()):
+        if uid in ignored:
+            continue
+        pos = t_data.get('pos')
+        if isinstance(pos, (tuple, list)) and len(pos) >= 3:
+            dx = float(pos[0]) - ex
+            dy = float(pos[1]) - ey
+            dz = float(pos[2]) - ez
+            if (dx * dx + dy * dy + dz * dz) <= r_sq:
+                hits.append({
+                    'type': 'gadget',
+                    'uid': uid,
+                    'kind': t_data.get('kind', 0),
+                    'hit_pos': (pos[0], pos[1], pos[2]),
+                    'owner_bid': t_data.get('owner_bid', 0),
+                })
+
+    # 2. Drones
+    for p in session.players.values():
+        vid = int(getattr(p, 'last_unmanned_vehicle_id', 0) or 0)
+        if vid > 0:
+            pose = getattr(p, 'last_unmanned_vehicle_pose', {})
+            if isinstance(pose, dict) and 'pos_x' in pose:
+                dx = float(pose['pos_x']) - ex
+                dy = float(pose['pos_y']) - ey
+                dz = float(pose['pos_z']) - ez
+                if (dx * dx + dy * dy + dz * dz) <= r_sq:
+                    hits.append({
+                        'type': 'drone',
+                        'uid': vid,
+                        'kind': 9,
+                        'hit_pos': (pose['pos_x'], pose['pos_y'], pose['pos_z']),
+                        'owner_bid': p.bid,
+                    })
+
+    # 3. Security cameras
+    map_id = int(session.game_state.get('map_id', 1) or 1)
+    for cam_id, cx, cy, cz in STATIC_MAP_SECURITY_CAMERAS.get(map_id, []):
+        if cam_id not in getattr(session, 'broken_security_cameras', set()):
+            dx = cx - ex
+            dy = cy - ey
+            dz = cz - ez
+            if (dx * dx + dy * dy + dz * dz) <= r_sq:
+                hits.append({
+                    'type': 'camera',
+                    'uid': _encode_unique_id_components(13, cam_id),
+                    'local_id': cam_id,
+                    'kind': 13,
+                    'hit_pos': (cx, cy, cz),
+                })
+
+    if hits:
+        _session_apply_entity_destruction(
+            session,
+            attacker_bid,
+            DESTROY_TYPE_EXPLOSIVE_DAMAGE,
+            hits,
+            _log or (lambda msg: None),
+        )
+
+
 def _blocking_board_damage_step(destroy_type: int) -> float:
     normalized_type = int(destroy_type) & 0xFF
     if normalized_type in {
@@ -9101,7 +11278,7 @@ def _blocking_board_damage_step(destroy_type: int) -> float:
         # Keep parity with explosive contract for shock-grenade wall impact.
         return 1.0
     if normalized_type == DESTROY_TYPE_HAMMER_DAMAGE:
-        return 0.55
+        return 1.0
     if normalized_type == DESTROY_TYPE_MELEE_DAMAGE:
         # Melee should require three consistent hits.
         return 0.34
@@ -9378,9 +11555,14 @@ def _session_select_blocking_board_id_locked(
         if ranked:
             ranked.sort(key=lambda item: item[0])
             best_rank, best_id, best_dbg = ranked[0]
-            if not BLOCKING_BOARD_SELECTION_REQUIRE_CONFIDENCE or int(best_rank[0]) < 4:
+            if int(best_rank[0]) < 4:
                 return best_id, best_dbg
+            if ray_samples or BLOCKING_BOARD_SELECTION_REQUIRE_CONFIDENCE:
+                return None, f"reject_unconfident {best_dbg}"
             rejected_unconfident_dbg = f"reject_unconfident {best_dbg}"
+
+    if ray_samples:
+        return None, rejected_unconfident_dbg or 'ray_missed_blocking_board'
 
     if len(known_ids) == 1:
         only_known = int(next(iter(known_ids)))
@@ -9413,6 +11595,7 @@ def _session_select_blocking_board_id_locked(
     if rejected_unconfident_dbg:
         return None, rejected_unconfident_dbg
     return None, 'no_candidate'
+
 
 
 def _ray_board_hit_local(
@@ -9708,85 +11891,54 @@ def _resolve_board_block_index_from_local(
     hit_from_back_side: bool = False,
     force_asset_row_bands: bool = False,
 ) -> int:
-    centers = _get_blocking_board_layout_centers(profile)
-    effective_col_mirror = profile.col_mirror
-    if BLOCKING_BOARD_COL_MIRROR_FLIP_BY_HIT_SIDE and bool(hit_from_back_side):
-        if (not centers) or BLOCKING_BOARD_ASSET_COL_MIRROR_FLIP_BY_HIT_SIDE:
-            effective_col_mirror = not effective_col_mirror
+    layout_rows = _get_blocking_board_row_centers(_profile_name(profile), profile.cols, profile.rows)
+    
+    y_gain = max(1e-6, float(profile.local_y_gain))
+    local_y_adj = (float(local_y) - profile.local_y_bias) * y_gain
 
-    if centers:
+    if layout_rows:
+        effective_col_mirror = profile.col_mirror
+        if BLOCKING_BOARD_COL_MIRROR_FLIP_BY_HIT_SIDE and hit_from_back_side:
+            if BLOCKING_BOARD_ASSET_COL_MIRROR_FLIP_BY_HIT_SIDE:
+                effective_col_mirror = not effective_col_mirror
+
         lx = float(local_x)
-        ly = float(local_y)
-        ly = (ly - profile.local_y_bias) * max(1e-6, float(profile.local_y_gain))
-
-        # Keep the same horizontal orientation controls as legacy mapping.
         if effective_col_mirror:
             lx = -lx
-
-        profile_key = _normalize_blocking_board_profile_name(_profile_name(profile)) or ''
-        use_row_bands = ('window' in profile_key) or bool(force_asset_row_bands)
-        row_bands = _get_blocking_board_layout_row_bands(profile) if use_row_bands else None
-        if row_bands:
-            best_row_candidates: tuple[int, ...] | None = None
-            best_row_gap = float('inf')
-            for y_min, y_max, candidates in row_bands:
-                if y_min <= ly <= y_max:
-                    best_row_candidates = candidates
-                    best_row_gap = 0.0
-                    break
-                if ly < y_min:
-                    row_gap = y_min - ly
-                else:
-                    row_gap = ly - y_max
-                if row_gap < best_row_gap:
-                    best_row_gap = row_gap
-                    best_row_candidates = candidates
-
-            if best_row_candidates:
-                best_idx: int | None = None
-                best_score = float('inf')
-                for idx in best_row_candidates:
-                    if idx < 0 or idx >= len(centers):
-                        continue
-                    cx, cy = centers[idx]
-                    dx = lx - float(cx)
-                    dy = ly - float(cy)
-                    # Row is fixed by Y-band; choose by X with light Y tie-breaker.
-                    score = abs(dx) + (abs(dy) * 0.05)
-                    if score < best_score:
-                        best_score = score
-                        best_idx = int(idx)
-                if best_idx is not None:
-                    return best_idx
-
-        y_weight = max(1e-6, float(profile.local_y_metric_weight))
-
-        best_idx = 0
-        best_dist2 = float('inf')
-        for idx, (cx, cy) in enumerate(centers):
-            dx = lx - float(cx)
-            dy = ly - float(cy)
-            dist2 = (dx * dx) + (dy * dy * y_weight)
-            if dist2 < best_dist2:
-                best_dist2 = dist2
-                best_idx = idx
-        return best_idx
-
-    return _local_xy_to_board_block_index(
-        local_x,
-        local_y,
-        existing_broken,
-        total_cols=profile.cols,
-        total_rows=profile.rows,
-        half_height=profile.half_height,
-        half_width=profile.half_width,
-        local_x_bias=profile.local_x_bias,
-        local_x_gain=profile.local_x_gain,
-        local_y_bias=profile.local_y_bias,
-        local_y_gain=profile.local_y_gain,
-        row_top_down=profile.row_top_down,
-        col_mirror=effective_col_mirror,
-    )
+            
+        try:
+            # Find closest row by Y distance
+            best_row = min(layout_rows, key=lambda r: abs(r[0] - local_y_adj))
+            
+            # Find closest col by X distance within that row
+            row_centers = best_row[1]
+            best_id = min(row_centers, key=lambda item: abs(lx - item[0]))[1]
+            return best_id
+        except Exception:
+            pass
+            
+    v = (local_y_adj / max(1e-6, profile.half_height) + 1.0) * 0.5
+    v = max(0.0, min(0.999, v))
+    if profile.row_top_down:
+        v = 1.0 - v
+    row = int(v * profile.rows)
+    
+    effective_col_mirror = profile.col_mirror
+    if BLOCKING_BOARD_COL_MIRROR_FLIP_BY_HIT_SIDE and hit_from_back_side:
+        if BLOCKING_BOARD_ASSET_COL_MIRROR_FLIP_BY_HIT_SIDE:
+            effective_col_mirror = not effective_col_mirror
+            
+    x_gain = max(1e-6, float(profile.local_x_gain))
+    local_x_adj = (float(local_x) - profile.local_x_bias) * x_gain
+    u = (local_x_adj / max(1e-6, profile.half_width) + 1.0) * 0.5
+    u = max(0.0, min(0.999, u))
+    if effective_col_mirror:
+        u = 1.0 - u
+    col = int(u * profile.cols)
+    
+    target = row * profile.cols + col
+    total = profile.cols * profile.rows
+    return max(0, min(total - 1, target))
 
 
 def _next_unbroken_block_index(
@@ -9809,6 +11961,8 @@ def _session_collect_blocking_board_damage_packets(
     hit_count: int = 1,
     target_block_indices: list[int] | None = None,
     ray_samples: list[dict] | None = None,
+    attacker_bid: int | None = None,
+    weapon_name: str | None = None,
     _log: Callable | None = None,
 ) -> list[bytes]:
     if session is None:
@@ -10127,8 +12281,13 @@ def _session_collect_blocking_board_damage_packets(
                 total_rows=board_profile.rows,
             )
             segment_source = f"{segment_source}:explosion_cluster"
+        elif normalized_type == DESTROY_TYPE_HAMMER_DAMAGE:
+            # Sledge hammer: destroys entire barricade in 1 single strike
+            all_possible = list(range(board_block_count))
+            block_indices_to_break = [b for b in all_possible if b not in wall_blocks]
+            segment_source = f"{segment_source}:hammer_1hit_destroy"
         else:
-            # Single-hit model (gun/melee/hammer): exact segment or strict no-op.
+            # Single-hit model (gun/melee): exact segment or strict no-op.
             blk = candidate_indices[0]
             if blk not in wall_blocks:
                 block_indices_to_break = [blk]
@@ -10153,106 +12312,76 @@ def _session_collect_blocking_board_damage_packets(
         )
         session.blocking_board_hp[board_id] = hp_after
 
-        if broken_count >= board_block_count:
+        if normalized_type == DESTROY_TYPE_HAMMER_DAMAGE or broken_count >= 11 or broken_count >= (board_block_count * 0.26):
             destroyed = True
             session.blocking_board_states[board_id] = BLOCKING_BOARD_STATE_DEACTIVE
             dyn['state'] = BLOCKING_BOARD_STATE_DEACTIVE
+            session.blocking_board_hp[board_id] = 0.0
+            hp_after = 0.0
 
             destroyed_blocks_snapshot = sorted(int(v) & 0xFFFF for v in wall_blocks)
 
     packets: list[bytes] = []
+    effect_type = _destroy_type_to_effect_type(normalized_type)
+
     if hit_wall_blocks or destroyed:
         packets.append(build_rsp_blocking_board_state(board_id, hp_after))
 
     if hit_wall_blocks:
-        if is_player_placed_board:
-            packets.append(
-                build_rsp_event_blocking_board_destroy(
-                    board_id,
-                    source,
-                    hit_wall_blocks,
-                )
-            )
-            packets.append(build_rsp_dynamic_block_break_state(board_id, True))
-        else:
-            packets.append(
-                build_rsp_event_wall_block_destroy(
-                    board_id,
-                    _destroy_type_to_effect_type(normalized_type),
-                    source,
-                    hit_wall_blocks,
-                )
-            )
-            if BLOCKING_BOARD_COMPAT_PREPLACED_CONTENT_EVENT_ENABLED:
-                packets.append(
-                    build_rsp_event_blocking_board_destroy(
-                        board_id,
-                        source,
-                        hit_wall_blocks,
-                    )
-                )
-    if destroyed:
-        packets.insert(0, build_rsp_destroy_blocking_board(board_id, source))
-        packets.insert(
-            1,
-            build_rsp_destroy_scene_object(
-                normalized_type,
+        packets.append(
+            build_rsp_event_blocking_board_destroy(
+                board_id,
                 source,
-                [board_id],
-            ),
+                hit_wall_blocks,
+            )
         )
-        final_content_blocks = destroyed_blocks_snapshot if destroyed_blocks_snapshot else [0]
-        if (not hit_wall_blocks) or final_content_blocks != hit_wall_blocks:
-            if is_player_placed_board:
-                packets.append(
-                    build_rsp_event_blocking_board_destroy(
-                        board_id,
-                        source,
-                        final_content_blocks,
-                    )
-                )
-            else:
-                packets.append(
-                    build_rsp_event_wall_block_destroy(
-                        board_id,
-                        _destroy_type_to_effect_type(normalized_type),
-                        source,
-                        final_content_blocks,
-                    )
-                )
-                if BLOCKING_BOARD_COMPAT_PREPLACED_CONTENT_EVENT_ENABLED:
-                    packets.append(
-                        build_rsp_event_blocking_board_destroy(
-                            board_id,
-                            source,
-                            final_content_blocks,
-                        )
-                    )
+        packets.append(
+            build_rsp_event_wall_block_destroy(
+                board_id,
+                effect_type,
+                source,
+                hit_wall_blocks,
+            )
+        )
+        if is_player_placed_board:
+            packets.append(build_rsp_dynamic_block_break_state(board_id, True))
+
+    if destroyed:
+        all_blocks = list(range(board_block_count))
+        packets.append(
+            build_rsp_event_blocking_board_destroy(
+                board_id,
+                source,
+                all_blocks,
+            )
+        )
+        packets.append(build_rsp_blocking_board_state(board_id, 0.0))
+        packets.append(build_rsp_event_blocking_board_state(board_id, None, BLOCKING_BOARD_STATE_DEACTIVE))
+        packets.append(build_rsp_destroy_blocking_board(board_id, source))
         if is_player_placed_board:
             packets.append(build_rsp_dynamic_block_break_state(board_id, False))
         packets.append(build_rsp_event_wall_destroy(board_id))
+        if session:
+            packets.append(build_rsp_dynamic_wall_info(_session_snapshot_dynamic_walls(session)))
+
 
     if _log is not None:
-        _log(
-            "blocking board damage "
-            f"id={board_id} profile={_profile_name(board_profile)} rows={board_profile.rows} cols={board_profile.cols} "
-            f"bc={board_block_count} layout={'asset' if board_layout_centers else 'grid'} rb={1 if force_asset_row_bands else 0} "
-            f"xcal=({board_profile.local_x_bias:.3f},{board_profile.local_x_gain:.3f},m={1 if board_profile.col_mirror else 0},sf={1 if BLOCKING_BOARD_COL_MIRROR_FLIP_BY_HIT_SIDE else 0},asf={1 if BLOCKING_BOARD_ASSET_COL_MIRROR_FLIP_BY_HIT_SIDE else 0}) "
-            f"ycal=({board_profile.local_y_bias:.3f},{board_profile.local_y_gain:.3f},w={board_profile.local_y_metric_weight:.2f}) "
-            f"hp={hp_after:.2f} hits={normalized_hits} "
-            f"destroy_type={normalized_type} destroyed={1 if destroyed else 0} "
-            f"player_placed={1 if is_player_placed_board else 0} "
-            f"segments={len(hit_wall_blocks)} segment_src={segment_source} "
-            f"blocks={hit_wall_blocks}"
-            + f" select={board_selection_dbg}"
-            + (
-                f" src_pen={source_penalty_dbg:.3f}"
-                if source_penalty_dbg is not None
-                else ""
-            )
-            + (f" mapped={map_targets_dbg}" if map_targets_dbg else "")
-            + (f" | ray: {ray_dbg}" if ray_dbg else "")
+        import datetime
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        match_id = getattr(session, 'match_id', getattr(session, 'session_id', 'unknown')) if session else 'unknown'
+        log_msg = (
+            "--- BARRICADE DESTRUCTION LOG ---\n"
+            f"Time: {now}\n"
+            f"Match ID: {match_id}\n"
+            f"Player BID: {attacker_bid}\n"
+            f"Target Segment: {center_block_idx}\n"
+            f"Broken Segments: {hit_wall_blocks}\n"
+            f"Weapon/Source: {weapon_name} (type={normalized_type})\n"
+            f"Total Broken: {len(wall_blocks)}/{board_block_count}\n"
+            f"Destroyed: {destroyed}\n"
+            "---------------------------------"
         )
+        _log(log_msg)
 
     return packets
 
@@ -10296,6 +12425,158 @@ def _decode_rsp_event_wall_destroy_packet(packet: bytes) -> int | None:
     return wall_id
 
 
+def _world_to_wall_local(
+    point: tuple[float, float, float],
+    anchor: tuple[float, float, float],
+    yaw_deg: float,
+    is_floor: bool = False,
+    matrix: list[list[float]] | None = None,
+) -> tuple[float, float, float]:
+    if matrix and len(matrix) >= 3 and len(matrix[0]) >= 4:
+        px, py, pz = float(point[0]), float(point[1]), float(point[2])
+        lx = matrix[0][0] * px + matrix[0][1] * py + matrix[0][2] * pz + matrix[0][3]
+        ly = matrix[1][0] * px + matrix[1][1] * py + matrix[1][2] * pz + matrix[1][3]
+        lz = matrix[2][0] * px + matrix[2][1] * py + matrix[2][2] * pz + matrix[2][3]
+        return lx, ly, lz
+    dx = float(point[0]) - float(anchor[0])
+    dy = float(point[1]) - float(anchor[1])
+    dz = float(point[2]) - float(anchor[2])
+    rad = math.radians(-float(yaw_deg))
+    cos_y = math.cos(rad)
+    sin_y = math.sin(rad)
+    if is_floor:
+        lx = dx * cos_y - dz * sin_y
+        lz = dx * sin_y + dz * cos_y
+        ly = dy
+    else:
+        lx = dx * cos_y - dz * sin_y
+        ly = dy
+        lz = dx * sin_y + dz * cos_y
+    return lx, ly, lz
+
+
+def _session_find_best_wall_hit(
+    session: BattleSession,
+    impact_pos: tuple[float, float, float],
+    preferred_wall_id: int | None = None,
+    is_explosion: bool = False,
+) -> tuple[int | None, dict | None, float, float]:
+    if preferred_wall_id is not None:
+        wid = int(preferred_wall_id) & 0xFFFFFFFF
+        meta = session.wall_metadata.get(wid)
+        if meta is not None:
+            mat = meta.get('world_to_local_matrix')
+            if mat and len(mat) >= 3 and len(mat[0]) >= 4:
+                lx, ly, _ = _world_to_wall_local(impact_pos, (0, 0, 0), 0.0, False, mat)
+                return wid, meta, lx, ly
+            anchor = session.wall_anchors.get(wid, meta.get('anchor', (0.0, 0.0, 0.0)))
+            yaw = float(meta.get('yaw_deg', 0.0))
+            lx, ly, _ = _world_to_wall_local(impact_pos, anchor, yaw, bool(meta.get('is_floor', False)))
+            return wid, meta, lx, ly
+
+    if not session.wall_metadata:
+        return None, None, 0.0, 0.0
+
+    max_dist = 5.0 if is_explosion else 3.8
+    best_wall_id: int | None = None
+    best_meta: dict | None = None
+    best_dist = float('inf')
+    best_lx = 0.0
+    best_ly = 0.0
+
+    for wid, meta in session.wall_metadata.items():
+        mat = meta.get('world_to_local_matrix')
+        if mat and len(mat) >= 3 and len(mat[0]) >= 4:
+            lx, ly, lz = _world_to_wall_local(impact_pos, (0, 0, 0), 0.0, False, mat)
+            size = meta.get('size', {})
+            hw = float(size.get('x', 2.5) or 2.5) * 0.5
+            hh = float(size.get('y', 3.25) or 3.25) * 0.5
+            clamped_x = max(-hw, min(hw, lx))
+            clamped_y = max(-hh, min(hh, ly))
+            dx = lx - clamped_x
+            dy = ly - clamped_y
+            dz = lz
+            total = math.sqrt(dx * dx + dy * dy + dz * dz)
+            hit_lx, hit_ly = clamped_x, clamped_y
+        else:
+            anchor = session.wall_anchors.get(wid, meta.get('anchor'))
+            if not anchor:
+                continue
+            yaw = float(meta.get('yaw_deg', 0.0))
+            is_floor = bool(meta.get('is_floor', False))
+            lx, ly, lz = _world_to_wall_local(impact_pos, anchor, yaw, is_floor)
+
+            if is_floor:
+                plane_dist = abs(ly)
+                surf_dist = math.sqrt(lx * lx + lz * lz)
+                if plane_dist > 1.3 or surf_dist > 4.5:
+                    continue
+                total = math.sqrt(plane_dist * plane_dist * 2.0 + surf_dist * surf_dist * 0.2)
+                hit_lx, hit_ly = lx, lz
+            else:
+                plane_dist = abs(lz)
+                if plane_dist > 1.6 or abs(lx) > 5.5 or ly < -1.2 or ly > 4.2:
+                    continue
+                total = math.sqrt(plane_dist * plane_dist * 2.0 + lx * lx * 0.2 + ly * ly * 0.2)
+                hit_lx, hit_ly = lx, ly
+
+        if total < best_dist and total <= max_dist:
+            best_dist = total
+            best_wall_id = wid
+            best_meta = meta
+            best_lx = hit_lx
+            best_ly = hit_ly
+
+    return best_wall_id, best_meta, best_lx, best_ly
+
+
+def _calculate_wall_blocks_to_break(
+    meta: dict,
+    lx: float,
+    ly: float,
+    destroy_type: int,
+    broken_so_far: set[int],
+) -> tuple[list[int], bool]:
+    return calculate_wall_blocks_in_radius(
+        wall_meta=meta,
+        local_hit=(lx, ly),
+        destroy_type=destroy_type,
+        broken_so_far=broken_so_far,
+        explosion_radius=1.25,
+    )
+
+
+def _session_collect_wall_damage_packets(
+    session: BattleSession | None,
+    *,
+    destroy_type: int,
+    damage_source: tuple[float, float, float],
+    preferred_wall_id: int | None = None,
+    ray_samples: list[dict] | None = None,
+    _log: Callable | None = None,
+) -> list[bytes]:
+    if session is None:
+        return []
+
+    packet_builders = {
+        'build_rsp_event_wall_block_destroy': build_rsp_event_wall_block_destroy,
+        'build_rsp_event_wall_destroy': build_rsp_event_wall_destroy,
+        'build_rsp_destroy_scene_object': build_rsp_destroy_scene_object,
+        'build_rsp_reinforced_del': build_rsp_reinforced_del,
+        'build_rsp_event_pillar_segments_destroy': build_rsp_event_pillar_segments_destroy,
+    }
+
+    return DestructionEngine.handle_wall_damage(
+        session=session,
+        destroy_type=destroy_type,
+        damage_source=damage_source,
+        preferred_wall_id=preferred_wall_id,
+        ray_samples=ray_samples,
+        packet_builders=packet_builders,
+        log_fn=_log,
+    )
+
+
 def _session_collect_structure_damage_packets(
     session: BattleSession | None,
     *,
@@ -10305,144 +12586,170 @@ def _session_collect_structure_damage_packets(
     hit_count: int = 1,
     target_block_indices: list[int] | None = None,
     ray_samples: list[dict] | None = None,
-    emit_destroy_scene_object: bool = True,
+    attacker_bid: int | None = None,
+    weapon_name: str | None = None,
     _log: Callable | None = None,
 ) -> list[bytes]:
-    """Collect structure damage packets with wall/blockingboard channel separation.
-
-    Strategy:
-    1) Reuse existing geometric resolver to pick id/blocks.
-    2) If wall packets are present, keep only wall channel and sync wall runtime stores.
-    3) If no wall packets were produced, passthrough original blockingboard packets.
     """
-    raw_packets = _session_collect_blocking_board_damage_packets(
-        session,
-        destroy_type=destroy_type,
-        damage_source=damage_source,
-        preferred_board_id=preferred_board_id,
-        hit_count=hit_count,
-        target_block_indices=target_block_indices,
-        ray_samples=ray_samples,
-        _log=_log,
-    )
-    if not raw_packets:
+    Unified entry point for damaging structures (blocking boards / walls).
+    """
+    if session is None:
         return []
 
-    wall_packets: list[bytes] = []
-    wall_hits: dict[int, set[int]] = {}
-    wall_destroy_ids: set[int] = set()
-    for packet in raw_packets:
-        try:
-            pkt_id, _ = cuint_decode(packet, 0)
-        except Exception:
-            continue
+    d_type = int(destroy_type) & 0xFF
+    is_explosion = _is_barricade_explosion_destroy_type(d_type) or d_type == DESTROY_TYPE_THERMITE_BOMB
 
-        if pkt_id == PKT_RSP_EVENT_WALL_BLOCK_DESTROY:
-            wall_packets.append(packet)
-            decoded = _decode_rsp_event_wall_block_destroy_packet(packet)
-            if decoded is None:
-                continue
-            wall_id, _damage_type, _src_pos, blocks = decoded
-            if wall_id <= 0:
-                continue
-            bucket = wall_hits.setdefault(wall_id, set())
-            for block_index in blocks:
-                bucket.add(int(block_index) & 0xFFFF)
-            continue
+    is_wall_target = False
+    is_barricade_target = False
+    if preferred_board_id is not None:
+        p_id = _normalize_board_id(preferred_board_id)
+        if p_id:
+            with session._lock:
+                if p_id in session.wall_metadata:
+                    is_wall_target = True
+                elif (
+                    p_id in session.blocking_board_profiles
+                    or p_id in session.player_placed_blocking_board_ids
+                    or p_id in session.blocking_board_anchor
+                    or p_id in session.blocking_board_states
+                ):
+                    is_barricade_target = True
 
-        if pkt_id == PKT_RSP_EVENT_WALL_DESTROY:
-            wall_packets.append(packet)
-            wall_id = _decode_rsp_event_wall_destroy_packet(packet)
-            if wall_id is not None:
-                wall_destroy_ids.add(wall_id)
-            continue
-
-    if not wall_packets:
-        if _log is not None:
-            _log(
-                "structure damage route=blockingboard "
-                f"destroy_type={int(destroy_type) & 0xFF} packets={len(raw_packets)} "
-                "reason=no_wall_packets"
-            )
-        return raw_packets
-
-    if session is not None:
+    cand_board_id: int | None = None
+    if not is_wall_target and not is_barricade_target:
         with session._lock:
-            for wall_id, blocks in wall_hits.items():
-                wall_blocks = session.wall_broken_blocks.setdefault(wall_id, set())
-                wall_blocks.update(int(v) & 0xFFFF for v in blocks)
-
-                dyn = session.wall_dynamic_walls.setdefault(
-                    wall_id,
-                    {
-                        'state': BLOCKING_BOARD_STATE_FORWARD,
-                        'blocks': set(),
-                    },
-                )
-                state = int(dyn.get('state', BLOCKING_BOARD_STATE_FORWARD)) & 0xFF
-                if state <= 0:
-                    state = BLOCKING_BOARD_STATE_FORWARD
-                dyn['state'] = state
-                dyn_blocks = dyn.get('blocks')
-                if not isinstance(dyn_blocks, set):
-                    dyn_blocks = set()
-                    dyn['blocks'] = dyn_blocks
-                dyn_blocks.update(int(v) & 0xFFFF for v in blocks)
-
-            for wall_id in wall_destroy_ids:
-                dyn = session.wall_dynamic_walls.setdefault(
-                    wall_id,
-                    {
-                        'state': BLOCKING_BOARD_STATE_DEACTIVE,
-                        'blocks': set(),
-                    },
-                )
-                dyn['state'] = BLOCKING_BOARD_STATE_DEACTIVE
-
-    if emit_destroy_scene_object and wall_hits:
-        destroy_objects: list[int] = []
-        for wall_id, blocks in sorted(wall_hits.items()):
-            for block_index in sorted(blocks):
-                destroy_objects.append(
-                    _encode_unique_id_components(
-                        UNIQUE_ID_KIND_WALL,
-                        wall_id,
-                        int(block_index) & 0xFFFF,
-                        0,
-                    )
-                )
-        if destroy_objects:
-            wall_packets.insert(
-                0,
-                build_rsp_destroy_scene_object(
-                    int(destroy_type) & 0xFF,
-                    damage_source,
-                    destroy_objects,
-                ),
+            cand_board_id, reason = _session_select_blocking_board_id_locked(
+                session,
+                preferred_board_id=None,
+                damage_source=damage_source,
+                ray_samples=ray_samples,
             )
+            if cand_board_id is not None and (
+                reason in ('preferred_known', 'preferred_new', 'ray_inside')
+            ):
+                is_barricade_target = True
+                preferred_board_id = cand_board_id
 
-    snapshot_packets: list[bytes] = []
-    if WALL_DAMAGE_PUSH_SNAPSHOT_PACKETS:
-        snapshot_packets = _session_collect_wall_snapshot_packets(
+    out_packets: list[bytes] = []
+
+    if is_wall_target:
+        wall_pkts = _session_collect_wall_damage_packets(
             session,
-            include_reinforced=False,
+            destroy_type=d_type,
+            damage_source=damage_source,
+            preferred_wall_id=preferred_board_id,
+            ray_samples=ray_samples,
             _log=_log,
-            reason='post_structure_damage',
         )
-        if snapshot_packets:
-            wall_packets.extend(snapshot_packets)
+        out_packets.extend(wall_pkts)
+        if is_explosion:
+            barricade_pkts = _session_collect_blocking_board_damage_packets(
+                session,
+                destroy_type=d_type,
+                damage_source=damage_source,
+                preferred_board_id=cand_board_id,
+                hit_count=hit_count,
+                target_block_indices=target_block_indices,
+                ray_samples=ray_samples,
+                attacker_bid=attacker_bid,
+                weapon_name=weapon_name,
+                _log=_log,
+            )
+            out_packets.extend(barricade_pkts)
+    elif is_barricade_target:
+        barricade_pkts = _session_collect_blocking_board_damage_packets(
+            session,
+            destroy_type=d_type,
+            damage_source=damage_source,
+            preferred_board_id=preferred_board_id,
+            hit_count=hit_count,
+            target_block_indices=target_block_indices,
+            ray_samples=ray_samples,
+            attacker_bid=attacker_bid,
+            weapon_name=weapon_name,
+            _log=_log,
+        )
+        out_packets.extend(barricade_pkts)
+        if is_explosion:
+            wall_pkts = _session_collect_wall_damage_packets(
+                session,
+                destroy_type=d_type,
+                damage_source=damage_source,
+                preferred_wall_id=None,
+                ray_samples=ray_samples,
+                _log=_log,
+            )
+            out_packets.extend(wall_pkts)
+    else:
+        # Neither explicit wall nor direct barricade ray hit:
+        # Check walls first (raycast / nearest plane)
+        wall_pkts = _session_collect_wall_damage_packets(
+            session,
+            destroy_type=d_type,
+            damage_source=damage_source,
+            preferred_wall_id=None,
+            ray_samples=ray_samples,
+            _log=_log,
+        )
+        if wall_pkts:
+            out_packets.extend(wall_pkts)
+        if cand_board_id is not None and not wall_pkts:
+            barricade_pkts = _session_collect_blocking_board_damage_packets(
+                session,
+                destroy_type=d_type,
+                damage_source=damage_source,
+                preferred_board_id=cand_board_id,
+                hit_count=hit_count,
+                target_block_indices=target_block_indices,
+                ray_samples=ray_samples,
+                _log=_log,
+            )
+            out_packets.extend(barricade_pkts)
+
+        if is_explosion:
+            if not wall_pkts:
+                wall_pkts = _session_collect_wall_damage_packets(
+                    session,
+                    destroy_type=d_type,
+                    damage_source=damage_source,
+                    preferred_wall_id=None,
+                    ray_samples=ray_samples,
+                    _log=_log,
+                )
+                out_packets.extend(wall_pkts)
+            barricade_pkts = _session_collect_blocking_board_damage_packets(
+                session,
+                destroy_type=d_type,
+                damage_source=damage_source,
+                preferred_board_id=None,
+                hit_count=hit_count,
+                target_block_indices=target_block_indices,
+                ray_samples=ray_samples,
+                _log=_log,
+            )
+            out_packets.extend(barricade_pkts)
+
+    # Thermite burn on reinforced walls/floors
+    if preferred_board_id is not None:
+        norm_pid = _normalize_board_id(preferred_board_id)
+        if norm_pid is not None and d_type == DESTROY_TYPE_THERMITE_BOMB:
+            with session._lock:
+                if norm_pid in session.reinforced_states:
+                    session.reinforced_states[norm_pid] = REINFORCED_STATE_DELETED
+                    session.reinforced_walls.pop(norm_pid, None)
+                    session.reinforced_wall_items.discard(norm_pid)
+                    out_packets.append(build_rsp_reinforced_del(norm_pid))
+                    out_packets.append(build_rsp_event_wall_destroy(norm_pid))
 
     if _log is not None:
         _log(
-            "structure damage route=wall "
-            f"destroy_type={int(destroy_type) & 0xFF} "
-            f"wall_events={len(wall_hits)} wall_destroy={len(wall_destroy_ids)} "
-            f"snapshots={len(snapshot_packets)} "
-            f"packets={len(wall_packets)}/{len(raw_packets)} "
-            f"preferred={int(preferred_board_id or 0)}"
+            "structure damage resolved "
+            f"destroy_type={d_type} is_wall={is_wall_target} is_barricade={is_barricade_target} "
+            f"out_packets={len(out_packets)} preferred={int(preferred_board_id or 0)}"
         )
 
-    return wall_packets
+    return out_packets
+
 
 
 def _session_collect_explosive_structure_damage_packets(
@@ -10450,29 +12757,54 @@ def _session_collect_explosive_structure_damage_packets(
     player: BattlePlayer | None,
     *,
     damage_source: tuple[float, float, float],
+    destroy_type: int = DESTROY_TYPE_EXPLOSIVE_DAMAGE,
+    preferred_wall_id: int | None = None,
+    scene_tool_uid: int | None = None,
     _log: Callable | None = None,
 ) -> list[bytes]:
     if session is None or player is None:
         return []
 
-    scene_tool_unique_id = int(
-        player.guide_c4_scene_tool_unique_id
+    target_tool_uid = int(
+        scene_tool_uid
+        or player.guide_c4_scene_tool_unique_id
         or player.last_place_scene_tool_unique_id
         or player.last_scene_tool_unique_id
         or player.last_grenade_unique_id
         or 0
     ) & 0xFFFFFFFFFFFFFFFF
 
-    wall_hint_id: int | None = None
-    if scene_tool_unique_id > 0:
-        wall_hint_id = _session_get_scene_tool_wall_hint(session, scene_tool_unique_id)
+    wall_hint_id = preferred_wall_id
+    if wall_hint_id is None and target_tool_uid > 0:
+        wall_hint_id = _session_get_scene_tool_wall_hint(session, target_tool_uid)
     if wall_hint_id is None:
         wall_hint_id = _normalize_board_id(getattr(player, 'last_place_target_wall_id', 0) or 0)
+
+    # Detect if gadget is Thermite (kind 24)
+    eff_destroy_type = destroy_type
+    if eff_destroy_type == DESTROY_TYPE_EXPLOSIVE_DAMAGE and target_tool_uid > 0:
+        tool_data = session.placed_scene_tools.get(target_tool_uid, {})
+        kind = tool_data.get('kind', 0)
+        if not kind:
+            comp = _decode_unique_id_components(target_tool_uid)
+            kind = comp[0] if comp else 0
+        if kind == 24:  # EntryType.ThermiteBomb
+            eff_destroy_type = DESTROY_TYPE_THERMITE_BOMB
+
+    # Destroy gadgets, drones, and cameras within blast radius
+    _session_apply_explosive_entity_destruction(
+        session,
+        player.bid if player else 0,
+        damage_source,
+        radius=4.5,
+        _log=_log,
+        ignore_uids={target_tool_uid} if target_tool_uid > 0 else None,
+    )
 
     if wall_hint_id is not None:
         packets = _session_collect_structure_damage_packets(
             session,
-            destroy_type=DESTROY_TYPE_EXPLOSIVE_DAMAGE,
+            destroy_type=eff_destroy_type,
             damage_source=damage_source,
             preferred_board_id=wall_hint_id,
             hit_count=1,
@@ -10482,19 +12814,19 @@ def _session_collect_explosive_structure_damage_packets(
             if _log is not None:
                 _log(
                     "explosive damage route=wall "
-                    f"uid={scene_tool_unique_id} wall_id={wall_hint_id} "
+                    f"uid={target_tool_uid} wall_id={wall_hint_id} dtype={eff_destroy_type} "
                     f"packets={len(packets)}"
                 )
             return packets
 
     if _log is not None:
         _log(
-            "explosive damage route=blockingboard "
-            f"uid={scene_tool_unique_id} wall_hint={int(wall_hint_id or 0)} reason=no_wall_hint_or_no_wall_packets"
+            "explosive damage route=proximity "
+            f"uid={target_tool_uid} wall_hint={int(wall_hint_id or 0)} dtype={eff_destroy_type}"
         )
     return _session_collect_structure_damage_packets(
         session,
-        destroy_type=DESTROY_TYPE_EXPLOSIVE_DAMAGE,
+        destroy_type=eff_destroy_type,
         damage_source=damage_source,
         preferred_board_id=None,
         hit_count=1,
@@ -10686,7 +13018,7 @@ def _session_snapshot_dynamic_walls(session: BattleSession | None) -> list[dict]
         # Base runtime for preplaced/placed barricades.
         _ingest(
             getattr(session, 'dynamic_walls', None),
-            default_state=BLOCKING_BOARD_STATE_FORWARD,
+            default_state=BLOCKING_BOARD_STATE_DEACTIVE,
         )
         # Wall-channel runtime (can override state/blocks for touched scene walls).
         _ingest(
@@ -10705,7 +13037,7 @@ def _session_snapshot_dynamic_walls(session: BattleSession | None) -> list[dict]
             row = merged.setdefault(
                 wid,
                 {
-                    'state': BLOCKING_BOARD_STATE_FORWARD,
+                    'state': BLOCKING_BOARD_STATE_DEACTIVE,
                     'blocks': set(),
                 },
             )
@@ -10714,14 +13046,24 @@ def _session_snapshot_dynamic_walls(session: BattleSession | None) -> list[dict]
             except Exception:
                 pass
 
-        return [
-            {
+        snapshot_rows: list[dict] = []
+        for wall_id, desc in sorted(merged.items()):
+            state = int(desc.get('state', BLOCKING_BOARD_STATE_DEACTIVE)) & 0xFF
+            broken_blocks = set(int(v) & 0xFFFF for v in (desc.get('blocks', set()) or set()))
+            profile = _session_get_blocking_board_profile_locked(session, wall_id)
+            total_blocks = max(1, _get_blocking_board_effective_count(profile))
+            if state == BLOCKING_BOARD_STATE_DEACTIVE:
+                intact_blocks = []
+            elif broken_blocks:
+                intact_blocks = [i for i in range(total_blocks) if i not in broken_blocks]
+            else:
+                intact_blocks = list(range(total_blocks))
+            snapshot_rows.append({
                 'id': int(wall_id),
-                'state': int(desc.get('state', BLOCKING_BOARD_STATE_DEACTIVE)) & 0xFF,
-                'blocks': sorted(int(v) & 0xFFFF for v in (desc.get('blocks', set()) or set())),
-            }
-            for wall_id, desc in sorted(merged.items())
-        ]
+                'state': state,
+                'blocks': intact_blocks,
+            })
+        return snapshot_rows
 
 
 def _session_snapshot_reinforced_walls(
@@ -10897,6 +13239,10 @@ def _session_collect_destroy_scene_packets(
     wall_hits: dict[int, set[int]] = {}
     simple_quintain_ids: list[int] = []
     seen_simple_quintain_ids: set[int] = set()
+    scene_tool_ids: list[int] = []
+    drone_ids: list[int] = []
+    camera_ids: list[int] = []
+    gadget_kinds = (8, 14, 15, 16, 17, 18, 25, 28, 29, 37, 38)
     unknown_rows: list[dict[str, int]] = []
     invalid_rows = 0
     for row in decoded_rows:
@@ -10906,10 +13252,29 @@ def _session_collect_destroy_scene_packets(
         index2 = int(row.get('index2', 0)) & 0xFFFF
         raw_value = int(row.get('raw', 0)) & 0xFFFFFFFFFFFFFFFF
         route = 'unknown'
-        if local_id <= 0:
+        # Check scene_tool FIRST (before local_id validation) because gadget UIDs
+        # can have local_id==0 when the kind field encodes the tool type, but the
+        # full 64-bit raw_value is the authoritative lookup key in placed_scene_tools.
+        if session and raw_value in session.placed_scene_tools:
+            route = 'scene_tool'
+            if raw_value not in scene_tool_ids:
+                scene_tool_ids.append(raw_value)
+        elif kind == 9:  # EntryType.Vehicle (Drone / Scout Car)
+            route = 'drone'
+            if raw_value not in drone_ids:
+                drone_ids.append(raw_value)
+        elif kind == 13:  # EntryType.Monitor (Security Camera)
+            route = 'camera'
+            if local_id not in camera_ids:
+                camera_ids.append(local_id)
+        elif kind in gadget_kinds:
+            route = 'gadget'
+            if raw_value not in scene_tool_ids:
+                scene_tool_ids.append(raw_value)
+        elif local_id <= 0:
             invalid_rows += 1
             route = 'invalid_local_id'
-        elif kind == UNIQUE_ID_KIND_WALL:
+        elif kind in WALL_ENTRY_KINDS or kind == UNIQUE_ID_KIND_WALL:
             route = 'wall'
             wall_hits.setdefault(local_id, set()).add(index1)
         elif kind in TRAINING_TARGET_DESTROY_UID_KINDS:
@@ -10986,6 +13351,39 @@ def _session_collect_destroy_scene_packets(
             packets.append(
                 build_rsp_simple_quintain_info(
                     _session_collect_broken_simple_quintains_locked(session)
+                )
+            )
+
+        for did in drone_ids:
+            _log(f"Destroyed Drone vehicle_id={did} by ReqDestroySceneObject")
+            packets.append(
+                build_rsp_unmanned_vehicle_dead(
+                    vehicle_id=did,
+                    attacker_bid=0,
+                    effect_type=effect_type,
+                )
+            )
+
+        for cid in camera_ids:
+            _log(f"Destroyed Camera monitor_id={cid} by ReqDestroySceneObject")
+            packets.append(
+                build_rsp_monitor_dead(
+                    monitor_id=cid,
+                    attacker_bid=0,
+                    effect_type=effect_type,
+                )
+            )
+
+        for uid in scene_tool_ids:
+            if session and uid in session.placed_scene_tools:
+                _log(f"Destroyed SceneTool {uid} by ReqDestroySceneObject")
+                session.placed_scene_tools.pop(uid, None)
+            packets.append(
+                build_rsp_delete_scene_tool(
+                    scene_tool_unique_id=uid,
+                    kind=SCENE_TOOL_DELETE_KIND_DESTROY,
+                    attacker_bid=0,
+                    effect_type=effect_type,
                 )
             )
 
@@ -11401,6 +13799,8 @@ def _handle_req_leave_battle(
             target_session.broken_walls.clear()
             target_session.wall_dynamic_walls.clear()
             target_session.wall_broken_blocks.clear()
+            target_session.wall_anchors.clear()
+            target_session.wall_metadata.clear()
             target_session.reinforced_walls.clear()
             target_session.reinforced_wall_items.clear()
             target_session.scene_tool_board_hint.clear()
@@ -11420,6 +13820,8 @@ def _handle_req_leave_battle(
                 target_session,
                 map_id,
             )
+            _session_seed_walls_from_manifest(target_session, map_id)
+
 
             if full_restart_selection_reset and isinstance(target_session.game_state, dict):
                 # Client text for "Reset map" explicitly says selection stays unchanged.
@@ -11450,11 +13852,15 @@ def _handle_req_leave_battle(
                     map_id,
                 )
                 if seeded_from_manifest > 0:
+                    active_cnt = sum(
+                        1 for s in target_session.blocking_board_states.values()
+                        if s != BLOCKING_BOARD_STATE_DEACTIVE
+                    )
+                    deactive_cnt = len(target_session.blocking_board_states) - active_cnt
                     _log(
                         "training reset: seeded blocking boards "
                         f"from manifest count={seeded_from_manifest} "
-                        f"state={BLOCKING_BOARD_SEEDED_DEFAULT_STATE} "
-                        f"active={1 if BLOCKING_BOARD_SEEDED_DEFAULT_ACTIVE else 0}"
+                        f"active={active_cnt} deactive={deactive_cnt}"
                     )
                 elif map_id == 1:
                     for board_id in TRAINING_DEFAULT_BLOCKING_BOARD_IDS:
@@ -11629,11 +14035,17 @@ def _handle_req_players_result(
     sock: socket.socket,
     peer: str,
     _log: Callable,
+    session: BattleSession | None = None,
 ):
     parse_req_players_result(stream)
     _log(f"ReqPlayersResult from {peer}")
-    sock.sendall(build_rsp_players_result_empty())
-    _log(f"sent RspPlayersResultEmpty to {peer}")
+    if session:
+        results = session.get_players_result()
+        sock.sendall(build_rsp_players_result(results))
+        _log(f"sent RspPlayersResult ({len(results)} players) to {peer}")
+    else:
+        sock.sendall(build_rsp_players_result_empty())
+        _log(f"sent RspPlayersResultEmpty to {peer}")
 
 
 def _maybe_log_spawn_probe(
@@ -11678,6 +14090,13 @@ def _maybe_log_spawn_probe(
         f"rot=({float(rot[0]):.2f},{float(rot[1]):.2f},{float(rot[2]):.2f})"
     )
 
+    if player and player.camp == BATTLE_CAMP_ATTACKER and not getattr(player, '_vehicle_born_sent', False) and session and getattr(session, 'stage', GAME_STAGE_BATTLE) == GAME_STAGE_PREPARE:
+        player._vehicle_born_sent = True
+        born_place_id = _resolve_attacker_vehicle_born_place(player, session)
+        veh_born_pkt = build_rsp_vehicle_born_place(int(born_place_id))
+        player.send_raw(veh_born_pkt)
+        _log(f"sent first-pose RspVehicleBornPlace (0x3F5) born_place_id={born_place_id} to bid={player.bid} uid={player.uid}")
+
 
 def _v2_handle_req_ping_or_pose(
     stream: InputStream,
@@ -11696,7 +14115,7 @@ def _v2_handle_req_ping_or_pose(
     req_0x01_variant = _select_req_0x01_variant(stream, in_gameplay_phase)
     if req_0x01_variant == 'pose':
         req = parse_req_character_pose(stream)
-        if player:
+        if player and not getattr(player, 'is_dead', False):
             rsp = build_rsp_character_pose(player.bid, req['delta'])
             if session:
                 session.broadcast(rsp)
@@ -11752,7 +14171,7 @@ def _v2_handle_req_enter_battle(
     try:
         r_state = _get_live_room_state()
         if isinstance(r_state, dict) and isinstance(r_state.get("players"), dict):
-            p_room_entry = r_state["players"].get(str(req['uid']))
+            p_room_entry = r_state["players"].get(str(req['uid'])) or r_state["players"].get(int(req['uid']))
     except Exception:
         pass
 
@@ -11772,16 +14191,29 @@ def _v2_handle_req_enter_battle(
             player.main_skill_id = p_room_entry.get("main_skill_id")
         if p_room_entry.get("sub_skill_id"):
             player.sub_skill_id = p_room_entry.get("sub_skill_id")
-        if p_room_entry.get("region_id"):
+        if p_room_entry.get("skins"):
+            player.skins = p_room_entry.get("skins")
+        if p_room_entry.get("region_id") is not None:
             player.born_region_id = p_room_entry.get("region_id")
+        elif p_room_entry.get("spawn_region_id") is not None:
+            player.born_region_id = p_room_entry.get("spawn_region_id")
     else:
-        p_camp = int(game_state.get('camp', 1) or 1)
-        player.camp = p_camp
-        player.team = 2 if p_camp == 2 else 1
+        is_training = _is_training_mode_game_state(game_state)
+        if not is_training and player.bid % 2 == 0:
+            p_camp = BATTLE_CAMP_DEFENDER
+            player.camp = BATTLE_CAMP_DEFENDER
+            player.team = 2
+            player.character_id = 101
+        else:
+            p_camp = int(game_state.get('camp', 1) or 1)
+            player.camp = p_camp
+            player.team = 2 if p_camp == 2 else 1
+            p_cid = int(game_state.get('character_id', 0) or 0)
+            if p_cid > 0:
+                player.character_id = p_cid
+            else:
+                player.character_id = 1 if p_camp == 1 else 101
         player.name = player_data.get('name', f"Player{player.uid}")
-        p_cid = int(game_state.get('character_id', 0) or 0)
-        if p_cid > 0:
-            player.character_id = p_cid
         if game_state.get("primary_weapon"):
             player.primary_weapon = game_state.get("primary_weapon")
         if game_state.get("secondary_weapon"):
@@ -11790,8 +14222,14 @@ def _v2_handle_req_enter_battle(
             player.main_skill_id = game_state.get("main_skill_id")
         if game_state.get("sub_skill_id"):
             player.sub_skill_id = game_state.get("sub_skill_id")
-        if game_state.get("region_id") is not None:
-            player.born_region_id = game_state.get("region_id")
+        if player.camp == BATTLE_CAMP_ATTACKER:
+            if game_state.get("attacker_spawn_region_id") is not None:
+                player.born_region_id = game_state.get("attacker_spawn_region_id")
+        else:
+            if game_state.get("region_id") is not None:
+                player.born_region_id = game_state.get("region_id")
+            elif game_state.get("spawn_region_id") is not None:
+                player.born_region_id = game_state.get("spawn_region_id")
 
     ci = req.get('client_info', {})
     _log(
@@ -11817,6 +14255,26 @@ def _v2_handle_req_enter_battle(
     )
     _log(f"sent RspRoomLoading ({len(room_loading)}B) hex={room_loading.hex()} to {peer}")
 
+    # Arm a fallback timer: if the session never reaches all_loaded within
+    # _ROOM_LOADING_FALLBACK_TIMEOUT seconds, force-start the game.
+    # This is the last-resort guard against any client that never sends
+    # ReqRoomLoaded (e.g. due to a Unity preloader coroutine exception).
+    session._arm_loading_fallback_timer()
+
+    # Synchronize already-connected peers' progress to this joining player so
+    # the client doesn't display them as stuck at 0%
+    try:
+        with session._lock:
+            for other_bid, other_p in session.players.items():
+                if other_bid != player.bid and other_p.sock is not None:
+                    other_prog = 1.0 if other_p.loaded else getattr(other_p, 'progress', 0.0)
+                    if other_prog > 0.0:
+                        prog_pkt = build_rsp_load_progress(other_bid, other_prog)
+                        sock.sendall(prog_pkt)
+                        _log(f"synced peer bid={other_bid} progress={other_prog:.2f} to {peer}")
+    except Exception as sync_err:
+        _log(f"peer progress sync error: {sync_err}")
+
     return session, player
 
 
@@ -11834,22 +14292,43 @@ def _v2_handle_req_load_progress(
     del battle_id, game_state, player_data
 
     req = parse_req_load_progress(stream)
-    _log(f"ReqLoadProgress progress={req['progress']:.2f} from {peer}")
+    prog = req.get('progress', 0.0)
+    try:
+        prog = float(prog)
+        if math.isnan(prog) or math.isinf(prog):
+            prog = 1.0
+    except Exception:
+        prog = 0.0
+    prog = max(0.0, min(1.0, prog))
+
+    if session and session._started:
+        if player:
+            player.loaded = True
+            player.progress = prog
+            player._last_progress_at = time.time()
+            session.send_game_start_to_player(player)
+        return session, player
+
+    _log(f"ReqLoadProgress progress={prog:.2f} from {peer}")
 
     if player:
-        player.progress = req['progress']
-        rsp = build_rsp_load_progress(player.bid, req['progress'])
+        player.progress = prog
+        player._last_progress_at = time.time()
+        rsp = build_rsp_load_progress(player.bid, prog)
         if session:
             session.broadcast(rsp)
         else:
             sock.sendall(rsp)
 
-        if req['progress'] >= 0.90:
-            success_pkt = build_rsp_battle_load_success(player.bid)
+        if prog >= 1.0:
+            player.loaded = True
             if session:
-                session.broadcast(success_pkt)
-                _log(f"resent RspBattleLoadSuccess bid={player.bid} to all players")
+                session._send_load_success_once(player)
+                if session.all_loaded():
+                    _log("all connected players reached 100% progress, scheduling game start!")
+                    session.schedule_game_start(delay=0.5)
             else:
+                success_pkt = build_rsp_battle_load_success(player.bid)
                 sock.sendall(success_pkt)
                 _log(f"sent RspBattleLoadSuccess bid={player.bid} to {peer}")
 
@@ -11871,13 +14350,21 @@ def _v2_handle_req_room_loaded(
 
     parse_req_room_loaded(stream)
 
-    _log(f"ReqRoomLoaded from {peer}")
+    _log(f"ReqRoomLoaded (0x3EF) from {peer}")
 
     if player:
         player.loaded = True
+        player.progress = 1.0
+        player._last_progress_at = time.time()
 
     if session and player:
         session._send_load_success_once(player)
+
+    if session and session._started:
+        if player:
+            _log(f"player bid={player.bid} uid={player.uid} sent ReqRoomLoaded into already-started session; catching up")
+            session.send_game_start_to_player(player)
+        return session, player
 
     should_start_now = False
     if session:
@@ -11886,7 +14373,7 @@ def _v2_handle_req_room_loaded(
                 _log("training mode: local player loaded, starting battle immediately")
                 should_start_now = True
         elif session.all_loaded():
-            _log("all players loaded, starting battle!")
+            _log("all connected players sent ReqRoomLoaded (IsInLoading == false), starting battle!")
             should_start_now = True
 
     if should_start_now and session:
@@ -12187,6 +14674,10 @@ def _handle_character_melee_attack_common(
         "ReqCharacterMeleeAttack "
         f"has_target={1 if isinstance(target, dict) else 0} target_bid={target_bid} from {peer}"
     )
+    if player and getattr(player, 'is_dead', False):
+        _log(f"ReqCharacterMeleeAttack ignored: player bid={player.bid} is dead")
+        return
+
     if player:
         rsp = build_rsp_character_melee_attack(
             target_hit if isinstance(target_hit, dict) else None
@@ -12201,6 +14692,8 @@ def _handle_character_melee_attack_common(
         if not getattr(target_player, 'is_dead', False):
             target_player.hp = 0
             target_player.is_dead = True
+            target_player.controlling_drone = False
+            target_player.operating_monitor = False
             _log(f"[Combat] Player bid={target_bid} ({target_player.name}) MELEE KILLED by bid={player.bid} ({player.name})!")
             hp_pkt = build_rsp_character_hp_changed(
                 bid=target_bid,
@@ -12218,29 +14711,40 @@ def _handle_character_melee_attack_common(
                 pos=getattr(target_player, 'last_character_pos', (0.0, 0.0, 0.0)),
             )
             session.broadcast(death_pkt)
+            target_player.deaths += 1
+            player.kills += 1
+            player.melee_kills += 1
+            player.score += 100
+            session.broadcast_players_result()
 
-            attackers_alive = any(
-                not getattr(p, 'is_dead', False)
-                for p in session.players.values()
-                if p.camp == BATTLE_CAMP_ATTACKER
-            )
-            defenders_alive = any(
-                not getattr(p, 'is_dead', False)
-                for p in session.players.values()
-                if p.camp == BATTLE_CAMP_DEFENDER
-            )
-            if not defenders_alive:
-                _log("[Combat] All Defenders eliminated -> Attackers Win!")
-                res_pkt = build_rsp_battle_result(reason=1, win_camp=BATTLE_CAMP_ATTACKER)
-                session.broadcast(res_pkt)
-                over_pkt = build_rsp_battle_over(reason=0)
-                session.broadcast(over_pkt)
-            elif not attackers_alive:
-                _log("[Combat] All Attackers eliminated -> Defenders Win!")
-                res_pkt = build_rsp_battle_result(reason=1, win_camp=BATTLE_CAMP_DEFENDER)
-                session.broadcast(res_pkt)
-                over_pkt = build_rsp_battle_over(reason=0)
-                session.broadcast(over_pkt)
+            if session is not None and not _is_training_mode_game_state(session.game_state):
+                attackers_alive = any(
+                    not getattr(p, 'is_dead', False)
+                    for p in session.players.values()
+                    if p.camp == BATTLE_CAMP_ATTACKER
+                )
+                defenders_alive = any(
+                    not getattr(p, 'is_dead', False)
+                    for p in session.players.values()
+                    if p.camp == BATTLE_CAMP_DEFENDER
+                )
+                if not defenders_alive:
+                    session.handle_round_end(
+                        winner_camp=BATTLE_CAMP_ATTACKER,
+                        reason=ROUND_END_REASON_ATTACKER_KILL_DEFENDER,
+                        replay_bid=player.bid,
+                        replay_dead=target_bid,
+                        replay_pos=getattr(target_player, 'last_character_pos', None),
+                    )
+                elif not attackers_alive:
+                    if not getattr(session, 'defuser_installed', False):
+                        session.handle_round_end(
+                            winner_camp=BATTLE_CAMP_DEFENDER,
+                            reason=ROUND_END_REASON_DEFENDER_KILL_ATTACKER,
+                            replay_bid=player.bid,
+                            replay_dead=target_bid,
+                            replay_pos=getattr(target_player, 'last_character_pos', None),
+                        )
 
     damage_source = _extract_melee_damage_source(
         target,
@@ -12264,10 +14768,28 @@ def _handle_character_melee_attack_common(
         hit_count=1,
         target_block_indices=target_block_indices,
         ray_samples=ray_samples,
+        attacker_bid=player.bid,
+        weapon_name="Melee",
         _log=_log,
     )
     if board_damage_packets:
         _session_send_packets(session, sock, board_damage_packets)
+
+    if session and player:
+        melee_hits = _detect_hit_scene_entities_from_rays(
+            session,
+            player,
+            ray_samples,
+            max_range=2.5,
+        )
+        if melee_hits:
+            _session_apply_entity_destruction(
+                session,
+                player.bid,
+                DESTROY_TYPE_MELEE_DAMAGE,
+                melee_hits,
+                _log,
+            )
 
 
 def _v2_handle_req_character_action_melee_attack(
@@ -12339,6 +14861,10 @@ def _v2_handle_req_character_gun_fire(
         f"type={int(req.get('gun_fire_type', 0)) & 0xFF} bullets={bullet_count} "
         f"{_summarize_req_gun_fire_targets(req)} from {peer}"
     )
+    if player and getattr(player, 'is_dead', False):
+        _log(f"ReqCharacterGunFire ignored: player bid={player.bid} is dead")
+        return session, player
+
     destroy_type = DESTROY_TYPE_SHOT_GUN_DAMAGE if bullet_count >= 6 else DESTROY_TYPE_GUN_DAMAGE
 
     if player:
@@ -12363,10 +14889,39 @@ def _v2_handle_req_character_gun_fire(
         preferred_board_id = _extract_req_target_board_id_from_gun_fire(req)
         target_block_indices = _extract_req_target_block_indices_from_gun_fire(req)
         ray_samples = _extract_req_ray_samples_from_gun_fire(req)
+        static_objects = _extract_static_object_ids_from_gun_fire(req)
+
+        # Detect hit gadgets, drones, and security cameras via raycast
+        hit_entities = []
+        if session:
+            hit_entities = _detect_hit_scene_entities_from_rays(
+                session,
+                player,
+                req.get('bullets', []),
+                has_structure_damage=bool(target_block_indices or preferred_board_id),
+            )
+            # Support any static object IDs explicitly reported in request (client fallback)
+            for obj_id in static_objects:
+                if not any(h.get('uid') == obj_id for h in hit_entities):
+                    decoded = _decode_unique_id_components(obj_id)
+                    kind = decoded[0] if decoded else 0
+                    local_id = decoded[1] if decoded else 0
+                    t_type = 'drone' if kind == 9 else ('camera' if kind == 13 else 'gadget')
+                    hit_entities.append({
+                        'type': t_type,
+                        'uid': obj_id,
+                        'local_id': local_id,
+                        'kind': kind,
+                        'hit_pos': damage_source,
+                    })
+
         _log(
             "ReqCharacterGunFire structure-target "
-            f"id={int(preferred_board_id or 0)} blocks={target_block_indices} rays={len(ray_samples)}"
+            f"id={int(preferred_board_id or 0)} blocks={target_block_indices} rays={len(ray_samples)} props={len(static_objects)} entity_hits={len(hit_entities)}"
         )
+
+        if hit_entities and session:
+            _session_apply_entity_destruction(session, player.bid, destroy_type, hit_entities, _log)
 
         if TRAINING_TARGET_AUTODESTROY_ON_GUNFIRE:
             destroy_packets = _session_destroy_first_training_target_packets(
@@ -12380,9 +14935,23 @@ def _v2_handle_req_character_gun_fire(
                     f"respawn_sec={TRAINING_TARGET_RESPAWN_SEC:.2f}"
                 )
 
+        board_damage_packets = _session_collect_structure_damage_packets(
+            session,
+            destroy_type=destroy_type,
+            damage_source=damage_source,
+            preferred_board_id=preferred_board_id,
+            hit_count=1,
+            target_block_indices=target_block_indices,
+            ray_samples=ray_samples,
+            _log=_log,
+        )
+        if board_damage_packets:
+            _session_send_packets(session, sock, board_damage_packets)
+
         # Player-vs-player hit registration:
         hurt_events_by_victim: dict[int, list[dict]] = {}
         if isinstance(req.get('bullets'), list) and session is not None:
+            player.shoot_count += len(req['bullets'])
             for b in req['bullets']:
                 tc = b.get('target_character')
                 if isinstance(tc, dict):
@@ -12396,21 +14965,78 @@ def _v2_handle_req_character_gun_fire(
                             hurt_events_by_victim[v_bid] = []
                         hurt_events_by_victim[v_bid].append(hurt_info)
 
+            from services.battle_destruction import raycast_all_walls, REINFORCED_STATE_ACTIVED1, REINFORCED_STATE_ACTIVED2, REINFORCED_STATE_INIT
             for v_bid, hurt_list in hurt_events_by_victim.items():
                 victim = session.players[v_bid]
                 hit_part = int(hurt_list[0]['target'].get('hit_part', 2))
-                if hit_part == 1:  # Headshot
+                
+                # proto.common.CharacterBodyPart:
+                # 1 = Head, 2 = Trunk, 3 = Legs, 4 = HandItem (weapon/hands), 5 = HandShield (ballistic shield)
+                if hit_part == 5:  # HandShield: ballistic shield blocks bullet
+                    damage = 0
+                    is_headshot = False
+                elif hit_part == 1:  # Headshot
                     damage = 100
                     is_headshot = True
-                elif hit_part == 2:  # Trunk
+                elif hit_part == 2:  # Trunk / Chest
                     damage = 38
                     is_headshot = False
                 elif hit_part == 3:  # Legs
                     damage = 26
                     is_headshot = False
+                elif hit_part == 4:  # HandItem (hands/weapon in front of body)
+                    damage = 30
+                    is_headshot = False
                 else:
                     damage = 32
                     is_headshot = False
+
+                # Raycast LOS validation between players:
+                # Client performs local PhysX hit detection (BulletUtil__Hit).
+                # Server validates if bullet penetrated reinforced walls or soft walls.
+                ray_pos = _coerce_vector3_tuple(hurt_list[0].get('ray', {}).get('pos'))
+                shooter_pos = ray_pos if ray_pos != (0.0, 0.0, 0.0) else getattr(player, 'last_character_pos', None)
+                victim_pos = getattr(victim, 'last_character_pos', None)
+
+                if damage > 0 and shooter_pos and victim_pos and shooter_pos != (0.0, 0.0, 0.0) and victim_pos != (0.0, 0.0, 0.0):
+                    # Ray origin from eye level (ray_pos is already at eye level, player pos needs offset)
+                    s_origin = shooter_pos if ray_pos != (0.0, 0.0, 0.0) else (shooter_pos[0], shooter_pos[1] + 1.4, shooter_pos[2])
+                    # Target at victim's torso/chest level (1.1m above feet)
+                    v_target = (victim_pos[0], victim_pos[1] + 1.1, victim_pos[2])
+
+                    dx = v_target[0] - s_origin[0]
+                    dy = v_target[1] - s_origin[1]
+                    dz = v_target[2] - s_origin[2]
+                    dist = math.sqrt(dx * dx + dy * dy + dz * dz)
+
+                    if dist > 0.1:
+                        ray_dir = (dx / dist, dy / dist, dz / dist)
+                        hits = raycast_all_walls(
+                            s_origin, ray_dir, dist,
+                            getattr(session, 'wall_metadata', {}),
+                            getattr(session, 'wall_anchors', None),
+                        )
+                        soft_wall_hit = False
+                        for r_wall_id, r_meta, r_local, r_world, r_t in hits:
+                            # Ignore floors and ceilings during horizontal LOS check
+                            if r_meta.get('is_floor') or 'floor' in r_meta.get('name', '').lower():
+                                continue
+
+                            # Reinforced wall installed by defender: impenetrable by bullets
+                            is_reinf = (
+                                getattr(session, 'reinforced_states', {}).get(r_wall_id, REINFORCED_STATE_INIT)
+                                in (REINFORCED_STATE_ACTIVED1, REINFORCED_STATE_ACTIVED2)
+                            )
+                            if is_reinf:
+                                damage = 0
+                                is_headshot = False
+                                break
+                            else:
+                                soft_wall_hit = True
+
+                        if damage > 0 and soft_wall_hit:
+                            # Soft wallbang penetration: 25% damage reduction
+                            damage = max(15, int(damage * 0.75))
 
                 cur_hp = getattr(victim, 'hp', 100)
                 new_hp = max(0, cur_hp - damage)
@@ -12418,6 +15044,14 @@ def _v2_handle_req_character_gun_fire(
                 is_dead = (new_hp <= 0)
                 if is_dead:
                     victim.is_dead = True
+                    victim.controlling_drone = False
+                    victim.operating_monitor = False
+
+                _log(
+                    f"PvP Gun Hit: attacker={player.bid} camp={player.camp} -> "
+                    f"victim={victim.bid} camp={victim.camp} part={hit_part} "
+                    f"dmg={damage} hp={new_hp} dead={is_dead} headshot={is_headshot}"
+                )
 
                 hurt_pkt = build_rsp_event_character_gun_hurt(player.bid, hurt_list)
                 session.broadcast(hurt_pkt)
@@ -12443,6 +15077,13 @@ def _v2_handle_req_character_gun_fire(
                         part_index=int(hurt_list[0]['target'].get('part_index', 0)),
                     )
                     session.broadcast(death_pkt)
+                    victim.deaths += 1
+                    player.kills += 1
+                    player.score += 100
+                    if is_headshot:
+                        player.headshots += 1
+                        player.score += 20
+                    session.broadcast_players_result()
 
                     if session is not None and not _is_training_mode_game_state(session.game_state):
                         attackers_alive = any(
@@ -12456,17 +15097,22 @@ def _v2_handle_req_character_gun_fire(
                             if p.camp == BATTLE_CAMP_DEFENDER
                         )
                         if not defenders_alive:
-                            _log("[Combat] All Defenders eliminated -> Attackers Win!")
-                            res_pkt = build_rsp_battle_result(reason=1, win_camp=BATTLE_CAMP_ATTACKER)
-                            session.broadcast(res_pkt)
-                            over_pkt = build_rsp_battle_over(reason=0)
-                            session.broadcast(over_pkt)
+                            session.handle_round_end(
+                                winner_camp=BATTLE_CAMP_ATTACKER,
+                                reason=ROUND_END_REASON_ATTACKER_KILL_DEFENDER,
+                                replay_bid=player.bid,
+                                replay_dead=victim.bid,
+                                replay_pos=getattr(victim, 'last_character_pos', None),
+                            )
                         elif not attackers_alive:
-                            _log("[Combat] All Attackers eliminated -> Defenders Win!")
-                            res_pkt = build_rsp_battle_result(reason=1, win_camp=BATTLE_CAMP_DEFENDER)
-                            session.broadcast(res_pkt)
-                            over_pkt = build_rsp_battle_over(reason=0)
-                            session.broadcast(over_pkt)
+                            if not getattr(session, 'defuser_installed', False):
+                                session.handle_round_end(
+                                    winner_camp=BATTLE_CAMP_DEFENDER,
+                                    reason=ROUND_END_REASON_DEFENDER_KILL_ATTACKER,
+                                    replay_bid=player.bid,
+                                    replay_dead=victim.bid,
+                                    replay_pos=getattr(victim, 'last_character_pos', None),
+                                )
 
                 if is_headshot:
                     shooter_points.append({'action': 2, 'point': 20})
@@ -12500,6 +15146,8 @@ def _v2_handle_req_character_gun_fire(
             hit_count=1,
             target_block_indices=target_block_indices,
             ray_samples=ray_samples,
+            attacker_bid=player.bid,
+            weapon_name=str(req.get('weapon_id')),
             _log=_log,
         )
         if board_damage_packets:
@@ -12542,9 +15190,6 @@ def _v2_handle_req_sync_character_action(
         )
         if session:
             session.broadcast(rsp, exclude_bid=player.bid)
-            sock.sendall(rsp)
-        else:
-            sock.sendall(rsp)
     return session, player
 
 
@@ -12724,6 +15369,196 @@ def _v2_handle_req_scan_enemies(
     return session, player
 
 
+def _session_apply_explosive_player_damage(
+    session: BattleSession | None,
+    det_pos: tuple[float, float, float],
+    *,
+    attacker: BattlePlayer | None = None,
+    max_radius: float = 4.5,
+    lethal_radius: float = 2.0,
+    _log: Callable = print,
+):
+    if session is None:
+        return
+    attacker_bid = attacker.bid if attacker else 0
+    attacker_pos = getattr(attacker, 'last_character_pos', det_pos) if attacker else det_pos
+
+    with session._lock:
+        for p in list(session.players.values()):
+            if getattr(p, 'is_dead', False):
+                continue
+            p_pos = getattr(p, 'last_character_pos', (0.0, 0.0, 0.0))
+            dx = p_pos[0] - det_pos[0]
+            dy = p_pos[1] - det_pos[1]
+            dz = p_pos[2] - det_pos[2]
+            dist = math.sqrt(dx * dx + dy * dy + dz * dz)
+            if dist > max_radius:
+                continue
+
+            if dist <= lethal_radius:
+                damage = 100
+            else:
+                ratio = (max_radius - dist) / (max_radius - lethal_radius)
+                damage = int(round(20 + 80 * ratio))
+
+            new_hp = max(0, int(getattr(p, 'hp', 100)) - damage)
+            p.hp = new_hp
+            _log(f"[Combat] Grenade blast hit player bid={p.bid} ({p.name}) dist={dist:.2f}m dmg={damage} hp_left={new_hp}")
+
+            hp_pkt = build_rsp_character_hp_changed(
+                bid=p.bid,
+                base_hp=new_hp,
+                extra_hp=0,
+                damage_type=DESTROY_TYPE_EXPLOSIVE_DAMAGE,
+                damage_source=det_pos,
+            )
+            session.broadcast(hp_pkt)
+
+            if new_hp <= 0:
+                p.is_dead = True
+                p.deaths += 1
+                if attacker and attacker.bid != p.bid:
+                    attacker.kills += 1
+                    attacker.score += 100
+                session.broadcast_players_result()
+                _log(f"[Combat] Player bid={p.bid} ({p.name}) KILLED by grenade from bid={attacker_bid}!")
+                death_pkt = build_rsp_player_death(
+                    bid=p.bid,
+                    item_uid=0,
+                    attacker_bid=attacker_bid,
+                    damage_type=DESTROY_TYPE_EXPLOSIVE_DAMAGE,
+                    pos=p_pos,
+                )
+                session.broadcast(death_pkt)
+
+                if not _is_training_mode_game_state(session.game_state):
+                    attackers_alive = any(
+                        not getattr(pl, 'is_dead', False)
+                        for pl in session.players.values()
+                        if pl.camp == BATTLE_CAMP_ATTACKER
+                    )
+                    defenders_alive = any(
+                        not getattr(pl, 'is_dead', False)
+                        for pl in session.players.values()
+                        if pl.camp == BATTLE_CAMP_DEFENDER
+                    )
+                    if not defenders_alive:
+                        session.handle_round_end(
+                            winner_camp=BATTLE_CAMP_ATTACKER,
+                            reason=ROUND_END_REASON_ATTACKER_KILL_DEFENDER,
+                            replay_bid=attacker_bid,
+                            replay_dead=p.bid,
+                            replay_pos=p_pos,
+                        )
+                    elif not attackers_alive:
+                        if not getattr(session, 'defuser_installed', False):
+                            session.handle_round_end(
+                                winner_camp=BATTLE_CAMP_DEFENDER,
+                                reason=ROUND_END_REASON_DEFENDER_KILL_ATTACKER,
+                                replay_bid=attacker_bid,
+                                replay_dead=p.bid,
+                                replay_pos=p_pos,
+                            )
+
+
+def _spawn_grenade_fuse_timer(
+    session: BattleSession | None,
+    player: BattlePlayer | None,
+    grenade_id: int,
+    initial_pos: tuple[float, float, float],
+    _log: Callable = print,
+    fuse_delay: float = 4.0,
+):
+    if session is None or player is None:
+        return
+
+    def _fuse_worker():
+        try:
+            time.sleep(fuse_delay)
+            if session is None or player is None:
+                return
+
+            if session:
+                with session._lock:
+                    if grenade_id in getattr(session, 'detonated_grenades', set()):
+                        return
+                    session.detonated_grenades.add(grenade_id)
+
+            if grenade_id in getattr(player, 'grenades_timeout', set()):
+                return
+            player.grenades_timeout.add(grenade_id)
+
+            # 1. Send RspGrenadeTimeOut (0xB5)
+            timeout_pkt = build_rsp_grenade_time_out(grenade_id)
+            session.broadcast(timeout_pkt)
+
+            # Wait briefly for client to report final position via RspGrenadeExplosivePosReport (0xB6)
+            time.sleep(0.25)
+
+            final_pos = getattr(player, 'grenades_pos', {}).get(grenade_id, (0.0, 0.0, 0.0))
+            if final_pos == (0.0, 0.0, 0.0):
+                final_pos = getattr(player, 'last_grenade_pos', (0.0, 0.0, 0.0))
+            if final_pos == (0.0, 0.0, 0.0) or final_pos == initial_pos:
+                # Do not detonate at player feet if throw trajectory failed to report
+                _log(f"[Combat] Grenade {grenade_id} fuse expired at throw origin {initial_pos}; skipping self-damage fallback")
+                return
+
+            # 2. Send ReqGrenadeExplosivePosNtf (0xB8) with current gadget count and position
+            current_count = int(getattr(player, 'grenade_count', 0))
+            ntf_pkt = build_req_grenade_explosive_pos_ntf(
+                grenade_id,
+                current_count,
+                final_pos,
+            )
+            session.broadcast(ntf_pkt)
+            _log(f"[Combat] Grenade {grenade_id} detonated at {final_pos} count={current_count}")
+
+            # 3. Delay RspDeleteSceneTool (0x170) so the client has time to process
+            #    ReqGrenadeExplosivePosNtf (0xB8) first and play the explosion effect.
+            #    PktCmdScenePropExplosive calls GetSceneProp(id) — if the prop was
+            #    already removed, it returns NULL and skips the flashbang visual/audio.
+            def _deferred_delete_scene_tool():
+                time.sleep(2.0)
+                try:
+                    del_pkt = build_rsp_delete_scene_tool(
+                        scene_tool_unique_id=grenade_id,
+                        kind=SCENE_TOOL_DELETE_KIND_USED,
+                        attacker_bid=player.bid,
+                        effect_type=EFFECT_TYPE_EXPLOSIVE,
+                    )
+                    session.broadcast(del_pkt)
+                except Exception as _e:
+                    pass
+            threading.Thread(target=_deferred_delete_scene_tool, daemon=True).start()
+
+            # 4. Apply structure damage
+            struct_pkts = _session_collect_explosive_structure_damage_packets(
+                session,
+                player,
+                damage_source=final_pos,
+                destroy_type=DESTROY_TYPE_EXPLOSIVE_DAMAGE,
+                scene_tool_uid=grenade_id,
+                _log=_log,
+            )
+            if struct_pkts:
+                for pkt in struct_pkts:
+                    session.broadcast(pkt)
+
+            # 5. Apply damage to players within blast radius
+            _session_apply_explosive_player_damage(
+                session,
+                final_pos,
+                attacker=player,
+                max_radius=3.5,
+                lethal_radius=1.5,
+                _log=_log,
+            )
+        except Exception as exc:
+            _log(f"[Combat] Exception in grenade fuse timer: {exc}")
+
+    threading.Thread(target=_fuse_worker, daemon=True).start()
+
+
 def _v2_handle_req_grenade_begin(
     stream: InputStream,
     sock: socket.socket,
@@ -12742,6 +15577,13 @@ def _v2_handle_req_grenade_begin(
     if player:
         player.last_grenade_unique_id = req['grenade_unique_id']
         player.last_grenade_timeout_uid = 0
+        player.last_grenade_begin_time = time.time()
+        
+        uid = req['grenade_unique_id']
+        if hasattr(player, 'grenades_pos'):
+            player.grenades_pos[uid] = (0.0, 0.0, 0.0)
+            player.grenades_timeout.discard(uid)
+            player.grenades_begin_time[uid] = player.last_grenade_begin_time
         rsp = build_rsp_grenade_begin(True, req['grenade_unique_id'])
         if session:
             session.broadcast(rsp)
@@ -12772,17 +15614,84 @@ def _v2_handle_req_throw_grenade_end(
         player.last_grenade_unique_id = req['grenade_unique_id']
         player.last_grenade_pos = req['explosive_pos']
         player.last_grenade_timeout_uid = 0
-        reporter_id = int(player.uid) if player.uid else int(player.bid)
+        
+        uid = req['grenade_unique_id']
+        if hasattr(player, 'grenades_pos'):
+            player.grenades_pos[uid] = req['explosive_pos']
+            player.grenades_timeout.discard(uid)
+        tool_idx = req['grenade_unique_id'] & 0xFFFF
+        if tool_idx == 0:
+            tool_idx = 64
+        grenade_cfg = _get_skill_reset_config(tool_idx) or {}
+        default_init = int(grenade_cfg.get('init_number', 2) or 2)
+        current_cnt = player.gadget_counts.get(tool_idx, getattr(player, 'grenade_count', default_init))
+        player.grenade_count = max(0, current_cnt - 1)
+        player.gadget_counts[tool_idx] = player.grenade_count
+        player.gadget_counts[64] = player.grenade_count
+        player.gadget_counts[63] = player.grenade_count
+        remain_count = player.grenade_count
+
+        if _is_intercepted_by_ads(session, req['explosive_pos'], player):
+            _log(f"Grenade {uid} INTERCEPTED by Jäger ADS!")
+            sync_num_pkt = build_rsp_sync_skill_num(player.bid, tool_idx, remain_count)
+            rsp_cancel = build_rsp_cancel_throw_grenade(True, uid)
+            if session:
+                session.broadcast(rsp_cancel)
+                session.broadcast(sync_num_pkt)
+            else:
+                sock.sendall(rsp_cancel)
+                sock.sendall(sync_num_pkt)
+            return session, player
+
         rsp = build_rsp_throw_grenade_end(
-            reporter_id,
+            remain_count,
             req['grenade_unique_id'],
             req['explosive_pos'],
-            req['throw_transform'],
+            req.get('throw_transform') or {},
         )
+        sync_num_pkt = build_rsp_sync_skill_num(player.bid, tool_idx, remain_count)
         if session:
             session.broadcast(rsp)
+            session.broadcast(sync_num_pkt)
         else:
             sock.sendall(rsp)
+            sock.sendall(sync_num_pkt)
+
+        cook_time = 0.0
+        uid = req.get('grenade_unique_id', getattr(player, 'last_grenade_unique_id', 0))
+        begin_time = getattr(player, 'grenades_begin_time', {}).get(uid, 0.0)
+        if begin_time == 0.0:
+            begin_time = getattr(player, 'last_grenade_begin_time', 0.0)
+        if begin_time > 0:
+            cook_time = max(0.0, time.time() - begin_time)
+        fuse_delay = max(1.2, 5.0 - cook_time)
+        _spawn_grenade_fuse_timer(
+            session,
+            player,
+            req['grenade_unique_id'],
+            req['explosive_pos'],
+            _log=_log,
+            fuse_delay=fuse_delay,
+        )
+    return session, player
+
+
+def _v2_handle_rsp_grenade_explosive_pos_report(
+    stream: InputStream,
+    sock: socket.socket,
+    peer: str,
+    battle_id: int,
+    game_state: dict,
+    player_data: dict,
+    _log: Callable,
+    session: BattleSession | None,
+    player: BattlePlayer | None,
+) -> tuple[BattleSession | None, BattlePlayer | None]:
+    del battle_id, game_state, player_data, sock
+    req = parse_rsp_grenade_explosive_pos_report(stream)
+    _log(f"RspGrenadeExplosivePosReport grenade_id={req['grenade_unique_id']} pos={req['explosive_pos']} from {peer}")
+    if player:
+        player.last_grenade_pos = req['explosive_pos']
     return session, player
 
 
@@ -12803,14 +15712,18 @@ def _v2_handle_req_grenade_explosive_pos_report(
     if player:
         player.last_grenade_unique_id = req['grenade_unique_id']
         player.last_grenade_pos = req['explosive_pos']
-        rsp = build_rsp_grenade_explosive_pos_report(
-            req['grenade_unique_id'],
-            req['explosive_pos'],
-        )
+        uid = req['grenade_unique_id']
+        if hasattr(player, 'grenades_pos'):
+            player.grenades_pos[uid] = req['explosive_pos']
+        # NEVER send RspGrenadeExplosivePosReport (0xB6) - it does not exist in client PacketFactory.
+        # Relay ReqGrenadeExplosivePosReport (0xB7) to other players in the session.
         if session:
-            session.broadcast(rsp)
-        else:
-            sock.sendall(rsp)
+            relay = build_req_grenade_explosive_pos_report(
+                req['grenade_unique_id'],
+                req['explosive_pos'],
+                req.get('throw_transform') or {},
+            )
+            session.broadcast(relay, exclude_bid=player.bid)
 
         _log(
             f"ReqGrenadeExplosivePosReport grenade_id={req['grenade_unique_id']} "
@@ -12838,18 +15751,28 @@ def _v2_handle_req_grenade_explosive_pos_ntf(
     if player:
         player.last_grenade_unique_id = req['grenade_unique_id']
         player.last_grenade_pos = req['explosive_pos']
+        uid = req['grenade_unique_id']
+        if hasattr(player, 'grenades_pos'):
+            player.grenades_pos[uid] = req['explosive_pos']
+        remain = int(getattr(player, 'grenade_count', 0))
         relay = build_req_grenade_explosive_pos_ntf(
             req['grenade_unique_id'],
-            req['remain_count'],
+            remain,
             req['explosive_pos'],
         )
         if session:
-            session.broadcast(relay)
-        else:
-            sock.sendall(relay)
+            session.broadcast(relay, exclude_bid=player.bid)
+
+        detonated_already = False
+        if session:
+            with session._lock:
+                if req['grenade_unique_id'] in getattr(session, 'detonated_grenades', set()):
+                    detonated_already = True
+                else:
+                    session.detonated_grenades.add(req['grenade_unique_id'])
 
         if (
-            req['remain_count'] == 0
+            not detonated_already
             and player.last_grenade_timeout_uid != req['grenade_unique_id']
         ):
             timeout_rsp = build_rsp_grenade_time_out(req['grenade_unique_id'])
@@ -12859,9 +15782,53 @@ def _v2_handle_req_grenade_explosive_pos_ntf(
                 sock.sendall(timeout_rsp)
             _log(
                 f"sent RspGrenadeTimeOut grenade_id={req['grenade_unique_id']} "
-                f"via ReqGrenadeExplosivePosNtf(remain=0) to {peer}"
+                f"via ReqGrenadeExplosivePosNtf to {peer}"
             )
+            
+            def _deferred_delete():
+                time.sleep(2.0)
+                try:
+                    del_pkt = build_rsp_delete_scene_tool(
+                        scene_tool_unique_id=req['grenade_unique_id'],
+                        kind=SCENE_TOOL_DELETE_KIND_USED,
+                        attacker_bid=player.bid,
+                        effect_type=EFFECT_TYPE_EXPLOSIVE,
+                    )
+                    if session:
+                        session.broadcast(del_pkt)
+                    else:
+                        sock.sendall(del_pkt)
+                except Exception:
+                    pass
+            threading.Thread(target=_deferred_delete, daemon=True).start()
+
             player.last_grenade_timeout_uid = req['grenade_unique_id']
+            if hasattr(player, 'grenades_timeout'):
+                player.grenades_timeout.add(req['grenade_unique_id'])
+
+            # Trigger explosive structure damage on impact/detonation
+            explosion_damage_packets = _session_collect_explosive_structure_damage_packets(
+                session,
+                player,
+                damage_source=req['explosive_pos'],
+                destroy_type=DESTROY_TYPE_EXPLOSIVE_DAMAGE,
+                scene_tool_uid=req['grenade_unique_id'],
+                _log=_log,
+            )
+            if explosion_damage_packets:
+                _session_send_packets(session, sock, explosion_damage_packets)
+                _log(
+                    f"Grenade detonation structure damage packets={len(explosion_damage_packets)} "
+                    f"pos={req['explosive_pos']}"
+                )
+            _session_apply_explosive_player_damage(
+                session,
+                req['explosive_pos'],
+                attacker=player,
+                max_radius=3.5,
+                lethal_radius=1.5,
+                _log=_log,
+            )
     return session, player
 
 
@@ -12917,6 +15884,21 @@ def _v2_handle_req_throw_scene_tool(
     )
     if player:
         player.last_scene_tool_unique_id = scene_tool_unique_id
+        # Decrement gadget count for throwable scene tools on the actual throw.
+        # tool_idx is encoded in the lower 16 bits of scene_tool_unique_id.
+        # The 0xB8 (ReqGrenadeExplosivePosNtf) packet later sends remain_count to
+        # the client, so we must decrement BEFORE that packet is built.
+        if scene_tool_unique_id > 0:
+            tool_idx = scene_tool_unique_id & 0xFFFF
+            if tool_idx in player.gadget_counts:
+                player.gadget_counts[tool_idx] = max(0, player.gadget_counts[tool_idx] - 1)
+                # Also sync grenade_count for tools that share the grenade HUD slot
+                if tool_idx in (63, 64):
+                    player.grenade_count = player.gadget_counts[tool_idx]
+                _log(
+                    f"[Combat] ThrowSceneTool tool_idx={tool_idx} "
+                    f"remain={player.gadget_counts[tool_idx]}"
+                )
     _session_mark_scene_tool_active(session, scene_tool_unique_id)
     _session_update_scene_tool_board_hint(
         session,
@@ -13342,9 +16324,13 @@ def _v2_handle_req_shock_grenade_bomb(
         if scene_tool_unique_id > 0:
             player.last_grenade_unique_id = scene_tool_unique_id
             player.last_grenade_timeout_uid = 0
+            if hasattr(player, 'grenades_timeout'):
+                player.grenades_timeout.discard(scene_tool_unique_id)
         trans = req.get('trans') if isinstance(req, dict) else None
         if isinstance(trans, dict):
             player.last_grenade_pos = _coerce_vector3_tuple(trans.get('position'))
+            if hasattr(player, 'grenades_pos') and scene_tool_unique_id > 0:
+                player.grenades_pos[scene_tool_unique_id] = player.last_grenade_pos
 
     trans = req.get('trans') if isinstance(req, dict) else None
     impact_pos = (
@@ -13367,16 +16353,80 @@ def _v2_handle_req_shock_grenade_bomb(
 
     packets: list[bytes] = [build_rsp_shock_grenade_bomb(scene_tool_unique_id)]
     if scene_tool_unique_id > 0:
-        # Keep shock explosion notifications and let the client finish
-        # scene-tool lifecycle naturally without early server-side stop.
-        packets.append(build_req_grenade_explosive_pos_ntf(scene_tool_unique_id, 0, impact_pos))
-        packets.append(build_rsp_grenade_time_out(scene_tool_unique_id))
-        packets.append(build_rsp_throw_scene_tool_end(scene_tool_unique_id))
+        # 1. Send ReqGrenadeExplosivePosNtf (0xB8) with the CURRENT remaining count.
+        #    PktCmdScenePropExplosive::Redo() on the client:
+        #      - Calls ToolCtrlrBase::SetCount(remain_count) — updates HUD counter.
+        #      - Calls ScenePropExplosiveSystem::Explosive(prop) — plays flashbang VFX/SFX.
+        #      - Hides the SceneProp (ChangeVisible(0)).
+        #    CRITICAL: We must NOT send RspDeleteSceneTool in this same packet burst!
+        #    If we delete the SceneProp before the client processes 0xB8, GetSceneProp(id)
+        #    returns NULL and the explosion VFX/SFX is silently skipped.
+        tool_idx = scene_tool_unique_id & 0xFFFF
+        if player:
+            current_count = int(
+                player.gadget_counts.get(tool_idx, getattr(player, 'grenade_count', 0))
+            )
+        else:
+            current_count = 0
+        packets.append(
+            build_req_grenade_explosive_pos_ntf(scene_tool_unique_id, current_count, impact_pos)
+        )
         _session_mark_scene_tool_ended(session, scene_tool_unique_id)
         _log(
-            "ReqShockGrenadeBomb explosion notification sent "
-            f"scene_tool_unique_id={scene_tool_unique_id}"
+            "ReqShockGrenadeBomb explosion: 0xB8 sent immediately; "
+            "RspDeleteSceneTool deferred 2s "
+            f"scene_tool_unique_id={scene_tool_unique_id} remain_count={current_count}"
         )
+
+        # 2. Defer RspDeleteSceneTool(kind=SCENE_TOOL_DELETE_KIND_USED=3) so the client
+        #    has ~2 seconds to process the explosion effect from step 1 above before the
+        #    SceneProp is removed from the world.
+        _attacker_bid = player.bid if player else 0
+        _uid = scene_tool_unique_id
+        _sess = session
+        _sock = sock
+
+        def _deferred_flashbang_delete():
+            time.sleep(2.0)
+            try:
+                del_pkt = build_rsp_delete_scene_tool(
+                    scene_tool_unique_id=_uid,
+                    kind=SCENE_TOOL_DELETE_KIND_USED,
+                    attacker_bid=_attacker_bid,
+                    effect_type=EFFECT_TYPE_EXPLOSIVE,
+                )
+                _session_send_packets(_sess, _sock, [del_pkt])
+            except Exception:
+                pass
+
+        threading.Thread(target=_deferred_flashbang_delete, daemon=True).start()
+
+        # 3. Apply flashbang screen-flash/blindness to all players within 12 m.
+        #    Flashbang tool_idx is 63.
+        if tool_idx == 63 and session is not None:
+            _FLASH_RADIUS = 12.0
+            _FLASH_DURATION = 3.5
+            _det = impact_pos
+            with session._lock:
+                nearby_players = [
+                    p for p in session.players.values()
+                    if not getattr(p, 'is_dead', False)
+                    and math.dist(getattr(p, 'last_character_pos', (0.0, 0.0, 0.0)), _det) <= _FLASH_RADIUS
+                ]
+            for p in nearby_players:
+                dist = math.dist(getattr(p, 'last_character_pos', (0.0, 0.0, 0.0)), _det)
+                intensity = max(0.2, 1.0 - dist / _FLASH_RADIUS)
+                flash_pkt = build_rsp_sync_player_state(
+                    bid=p.bid,
+                    effect_type=9,
+                    effect_value=intensity,
+                    remain_time=_FLASH_DURATION,
+                )
+                session.broadcast(flash_pkt)
+                _log(
+                    f"[Combat] Flashbang blinded player bid={p.bid} "
+                    f"dist={dist:.1f}m intensity={intensity:.2f}"
+                )
 
     _session_send_packets(session, sock, packets)
 
@@ -13554,11 +16604,35 @@ def _v2_handle_req_switch_current_unmanned_vehicle(
     _log(f"ReqSwitchCurrentUnmannedVehicle vehicle_id={vehicle_id} from {peer}")
 
     if player and vehicle_id > 0:
+        time_since_exit = time.time() - getattr(player, 'last_vehicle_exit_time', 0.0)
+        if time_since_exit < 1.5:
+            _log(f"ReqSwitchCurrentUnmannedVehicle ignored (exited drone {time_since_exit:.2f}s ago) for bid={player.bid}")
+            return session, player
         player.last_unmanned_vehicle_id = vehicle_id
+        is_dead = getattr(player, 'is_dead', False)
+        already_operated = False
+        if session:
+            for other in session.players.values():
+                if (
+                    other.bid != player.bid
+                    and not getattr(other, 'is_dead', False)
+                    and getattr(other, 'controlling_drone', False)
+                    and getattr(other, 'last_unmanned_vehicle_id', 0) == vehicle_id
+                ):
+                    already_operated = True
+                    break
+
+        if is_dead or already_operated:
+            relation = VEHICLE_RELATION_WATCHER
+            player.controlling_drone = False
+        else:
+            relation = VEHICLE_RELATION_OPERATOR
+            player.controlling_drone = True
+
         rsp = build_rsp_update_unmanned_vehicle_state(
             bid=player.bid,
             vehicle_id=vehicle_id,
-            relation=VEHICLE_RELATION_OPERATOR,
+            relation=relation,
             need_switch_to_character=False,
         )
         if session:
@@ -13615,18 +16689,10 @@ def _v2_handle_req_unmanned_vehicle_spawn(
             session.broadcast(rsp_spawn)
         else:
             sock.sendall(rsp_spawn)
-
-        if player:
-            rsp_state = build_rsp_update_unmanned_vehicle_state(
-                bid=player.bid,
-                vehicle_id=vehicle_id,
-                relation=VEHICLE_RELATION_OPERATOR,
-                need_switch_to_character=False,
-            )
-            if session:
-                session.broadcast(rsp_state)
-            else:
-                sock.sendall(rsp_state)
+        # Note: Do not send RspUpdateUnmannedVehicleState(OPERATOR) here.
+        # The client plays its 3rd-person swoop animation via GameReadyController or
+        # completes its Pad pullout animation via StateThrowScoutCar, then sends
+        # ReqSwitchCurrentUnmannedVehicle when ready to transition into 1st person.
     return session, player
 
 
@@ -13714,6 +16780,8 @@ def _v2_handle_req_unmanned_vehicle_take_back(
     if player and vehicle_id > 0:
         player.last_unmanned_vehicle_id = 0
         player.last_unmanned_vehicle_pose = {}
+        player.last_vehicle_exit_time = time.time()
+        player.controlling_drone = False
         rsp_state = build_rsp_update_unmanned_vehicle_state(
             bid=player.bid,
             vehicle_id=vehicle_id,
@@ -13745,6 +16813,8 @@ def _v2_handle_req_switch_unmanned_vehicle_to_character(
     _log(f"ReqSwitchUnmannedVehicleToCharacter vehicle_id={vehicle_id} from {peer}")
 
     if player and vehicle_id > 0:
+        player.last_vehicle_exit_time = time.time()
+        player.controlling_drone = False
         rsp = build_rsp_update_unmanned_vehicle_state(
             bid=player.bid,
             vehicle_id=vehicle_id,
@@ -13845,17 +16915,37 @@ def _v2_handle_req_switch_current_monitor(
                 "need_switch_to_character=0 (clear previous monitor)"
             )
         player.last_monitor_id = monitor_id
+        is_dead = getattr(player, 'is_dead', False)
+        already_operated = False
+        if session:
+            for other in session.players.values():
+                if (
+                    other.bid != player.bid
+                    and not getattr(other, 'is_dead', False)
+                    and getattr(other, 'operating_monitor', False)
+                    and getattr(other, 'last_monitor_id', 0) == monitor_id
+                ):
+                    already_operated = True
+                    break
+
+        if is_dead or already_operated:
+            relation = MONITOR_RELATION_WATCHER
+            player.operating_monitor = False
+        else:
+            relation = MONITOR_RELATION_OPERATOR
+            player.operating_monitor = True
+
         packets.append(
             build_rsp_update_monitor_state(
                 bid=player.bid,
                 monitor_id=monitor_id,
-                relation=MONITOR_RELATION_OPERATOR,
+                relation=relation,
                 need_switch_to_character=False,
             )
         )
         _log(
             "RspUpdateMonitorState "
-            f"bid={player.bid} monitor_id={monitor_id} relation={MONITOR_RELATION_OPERATOR} "
+            f"bid={player.bid} monitor_id={monitor_id} relation={relation} "
             "need_switch_to_character=0"
         )
         if session:
@@ -13891,6 +16981,8 @@ def _v2_handle_req_switch_monitor_to_character(
     monitor_id = int(player.last_monitor_id or 0) if player else 0
     _log(f"ReqSwitchMonitorToCharacter monitor_id={monitor_id} from {peer}")
     if player and monitor_id > 0:
+        player.operating_monitor = False
+        player.last_monitor_id = 0
         rsp = build_rsp_update_monitor_state(
             bid=player.bid,
             monitor_id=monitor_id,
@@ -13996,14 +17088,10 @@ def _v2_handle_req_found_critical_target(
             resolved_region_id,
             False,
         )
-        crit_rsp = build_rsp_critical_region_state(CRITICAL_REGION_STATE_BOTH_PLAYERS)
         if session:
             session.broadcast(rsp)
-            session.broadcast(crit_rsp)
-            _guide_set_critical_region_state(session, CRITICAL_REGION_STATE_BOTH_PLAYERS)
         else:
             sock.sendall(rsp)
-            sock.sendall(crit_rsp)
     return session, player
 
 
@@ -14027,14 +17115,10 @@ def _v2_handle_req_found_bomb_target(
             req.get('region_id', 0),
             False,
         )
-        crit_rsp = build_rsp_critical_region_state(CRITICAL_REGION_STATE_BOTH_PLAYERS)
         if session:
             session.broadcast(rsp)
-            session.broadcast(crit_rsp)
-            _guide_set_critical_region_state(session, CRITICAL_REGION_STATE_BOTH_PLAYERS)
         else:
             sock.sendall(rsp)
-            sock.sendall(crit_rsp)
     return session, player
 
 
@@ -14072,15 +17156,39 @@ def _v2_handle_req_notify_defuser_state(
     session: BattleSession | None,
     player: BattlePlayer | None,
 ) -> tuple[BattleSession | None, BattlePlayer | None]:
-    del peer, battle_id, game_state, player_data, _log
+    del peer, battle_id, game_state, player_data
 
     req = parse_req_notify_defuser_state(stream)
-    rsp = build_rsp_notify_defuser_state(req.get('state', 0))
+    state = req.get('state', 0)
+    rsp = build_rsp_notify_defuser_state(state)
     if session:
         session.broadcast(rsp)
+        _log(f"ReqNotifyDefuserState state={state} from bid={player.bid if player else 0}")
+        if state == 3:  # DefuserState.Installed (Planted!)
+            session.defuser_installed = True
+            session.defuser_installed_at = time.time()
+            _log(f"[Bomb] Defuser installed (bomb planted) by bid={player.bid if player else 0}!")
+            active_zones = session._get_active_bomb_zones()
+            plant_region_id = active_zones[0]
+            session.broadcast(build_rsp_defuser_installed(plant_region_id))
+        elif state == 4:  # DefuserState.Cracked (Defused!)
+            _log(f"[Bomb] Defuser cracked/defused by bid={player.bid if player else 0} -> Defenders Win!")
+            session.handle_round_end(
+                winner_camp=BATTLE_CAMP_DEFENDER,
+                reason=ROUND_END_REASON_DEFUSER_CRACKED,
+                replay_bid=player.bid if player else 0,
+            )
+        elif state == 6:  # DefuserState.Destroyed
+            _log(f"[Bomb] Defuser destroyed by bid={player.bid if player else 0} -> Defenders Win!")
+            session.handle_round_end(
+                winner_camp=BATTLE_CAMP_DEFENDER,
+                reason=ROUND_END_REASON_DEFUSER_DESTROYED,
+                replay_bid=player.bid if player else 0,
+            )
     else:
         sock.sendall(rsp)
     return session, player
+
 
 
 def _v2_handle_req_pick_up_defuser(
@@ -14094,10 +17202,23 @@ def _v2_handle_req_pick_up_defuser(
     session: BattleSession | None,
     player: BattlePlayer | None,
 ) -> tuple[BattleSession | None, BattlePlayer | None]:
-    del sock, battle_id, game_state, player_data
+    del battle_id, game_state, player_data
 
     parse_req_pick_up_defuser(stream)
     _log(f"ReqPickUpDefuser from {peer}")
+    
+    if session:
+        # InBag = 0
+        rsp = build_rsp_notify_defuser_state(0)
+        session.broadcast(rsp)
+        
+        # We also need to let clients know WHO picked it up. We broadcast RspFoundDefuser with the player's bid
+        # Note: defuser_id might need to be tracked in the session, but we can just use a dummy ID like 1 for now
+        # since there's only one defuser per match.
+        if player:
+            rsp2 = build_rsp_found_defuser(defuser_id=1, found_player_bid=player.bid)
+            session.broadcast(rsp2)
+            
     return session, player
 
 
@@ -14112,10 +17233,20 @@ def _v2_handle_req_drop_defuser(
     session: BattleSession | None,
     player: BattlePlayer | None,
 ) -> tuple[BattleSession | None, BattlePlayer | None]:
-    del sock, battle_id, game_state, player_data
+    del battle_id, game_state, player_data
 
     parse_req_drop_defuser(stream)
     _log(f"ReqDropDefuser from {peer}")
+    
+    if session:
+        # Falled = 5
+        rsp = build_rsp_notify_defuser_state(5)
+        session.broadcast(rsp)
+        
+        # We clear the owner by sending found_defuser with found_player_bid=0 (no carrier)
+        rsp2 = build_rsp_found_defuser(defuser_id=1, found_player_bid=0)
+        session.broadcast(rsp2)
+            
     return session, player
 
 
@@ -14430,20 +17561,34 @@ def _v2_handle_req_character_hammer_attack(
         "ReqCharacterHammerAttack "
         f"target_type={req.get('target_type', 0)} has_target={1 if req.get('target') else 0} from {peer}"
     )
+    if player and getattr(player, 'is_dead', False):
+        _log(f"ReqCharacterHammerAttack ignored: player bid={player.bid} is dead")
+        return session, player
+
     if player:
+        # Decrement hammer durability counter dynamically based on skill config
+        hammer_cfg = _get_skill_reset_config(159) or {}
+        default_hammer_init = int(hammer_cfg.get('init_number', 15) or 15)
+        current_cnt = player.gadget_counts.get(159, getattr(player, 'hammer_count', default_hammer_init))
+        player.hammer_count = max(0, current_cnt - 1)
+        player.gadget_counts[159] = player.hammer_count
+        remain_num = player.hammer_count
         rsp = build_rsp_character_hammer_attack(
             bid=player.bid,
             forward_ray=req.get('forward_ray', {}),
-            remain_num=0,
+            remain_num=remain_num,
             target_type=req.get('target_type', 0),
             trans=req.get('trans', {}),
             target_mat=req.get('target_mat', 0),
             target=req.get('target'),
         )
+        sync_num_pkt = build_rsp_sync_skill_num(player.bid, 159, remain_num)
         if session:
             session.broadcast(rsp)
+            session.broadcast(sync_num_pkt)
         else:
             sock.sendall(rsp)
+            sock.sendall(sync_num_pkt)
 
     target = req.get('target')
     damage_source = _extract_melee_damage_source(
@@ -14456,6 +17601,12 @@ def _v2_handle_req_character_hammer_attack(
         target,
         req.get('forward_ray'),
     )
+
+    # Melee reach check: hammer can only damage structures within reach.
+    player_pos = getattr(player, 'last_character_pos', (0.0, 0.0, 0.0)) if player else (0.0, 0.0, 0.0)
+    cam_pos = (player_pos[0], player_pos[1] + 1.5, player_pos[2])
+    forward_ray = req.get('forward_ray')
+
     board_damage_packets = _session_collect_structure_damage_packets(
         session,
         destroy_type=DESTROY_TYPE_HAMMER_DAMAGE,
@@ -14468,6 +17619,92 @@ def _v2_handle_req_character_hammer_attack(
     )
     if board_damage_packets:
         _session_send_packets(session, sock, board_damage_packets)
+
+    if session and player:
+        hammer_hits = _detect_hit_scene_entities_from_rays(
+            session,
+            player,
+            ray_samples,
+            max_range=2.5,
+        )
+        if hammer_hits:
+            _session_apply_entity_destruction(
+                session,
+                player.bid,
+                DESTROY_TYPE_HAMMER_DAMAGE,
+                hammer_hits,
+                _log,
+            )
+
+    if session and player:
+        target_hit = target.get('hit_target') if isinstance(target, dict) else None
+        target_bid = int(target_hit.get('bid', 0)) if isinstance(target_hit, dict) else 0
+        with session._lock:
+            for p in list(session.players.values()):
+                if p.bid == player.bid or getattr(p, 'is_dead', False):
+                    continue
+                if p.camp == player.camp:
+                    continue
+                p_pos = getattr(p, 'last_character_pos', (0.0, 0.0, 0.0))
+                p_dist = math.dist(cam_pos, (p_pos[0], p_pos[1] + 1.0, p_pos[2]))
+                p_dist_feet = math.dist(player_pos, p_pos) if player_pos != (0.0, 0.0, 0.0) else 999.0
+                if p_dist <= 1.5 or p_dist_feet <= 1.5 or (target_bid > 0 and p.bid == target_bid):
+                    p.hp = 0
+                    p.is_dead = True
+                    p.controlling_drone = False
+                    p.operating_monitor = False
+                    p.deaths += 1
+                    player.kills += 1
+                    player.melee_kills += 1
+                    player.score += 100
+                    session.broadcast_players_result()
+                    _log(f"[Combat] Player bid={p.bid} ({p.name}) HAMMER KILLED by bid={player.bid} ({player.name})!")
+                    hp_pkt = build_rsp_character_hp_changed(
+                        bid=p.bid,
+                        base_hp=0,
+                        extra_hp=0,
+                        damage_type=DESTROY_TYPE_HAMMER_DAMAGE,
+                        damage_source=damage_source,
+                    )
+                    death_pkt = build_rsp_player_death(
+                        bid=p.bid,
+                        item_uid=0,
+                        attacker_bid=player.bid,
+                        damage_type=DESTROY_TYPE_HAMMER_DAMAGE,
+                        pos=p_pos,
+                    )
+                    session.broadcast(hp_pkt)
+                    session.broadcast(death_pkt)
+
+                    if session is not None and not _is_training_mode_game_state(session.game_state):
+                        attackers_alive = any(
+                            not getattr(p2, 'is_dead', False)
+                            for p2 in session.players.values()
+                            if p2.camp == BATTLE_CAMP_ATTACKER
+                        )
+                        defenders_alive = any(
+                            not getattr(p2, 'is_dead', False)
+                            for p2 in session.players.values()
+                            if p2.camp == BATTLE_CAMP_DEFENDER
+                        )
+                        if not defenders_alive:
+                            session.handle_round_end(
+                                winner_camp=BATTLE_CAMP_ATTACKER,
+                                reason=ROUND_END_REASON_ATTACKER_KILL_DEFENDER,
+                                replay_bid=player.bid,
+                                replay_dead=p.bid,
+                                replay_pos=p_pos,
+                            )
+                        elif not attackers_alive:
+                            if not getattr(session, 'defuser_installed', False):
+                                session.handle_round_end(
+                                    winner_camp=BATTLE_CAMP_DEFENDER,
+                                    reason=ROUND_END_REASON_DEFENDER_KILL_ATTACKER,
+                                    replay_bid=player.bid,
+                                    replay_dead=p.bid,
+                                    replay_pos=p_pos,
+                                )
+
     return session, player
 
 
@@ -14629,6 +17866,18 @@ def _v2_handle_req_trap_bomb_uninstalled(
     _log(f"ReqTrapBombUninstalled uid={trap_bomb_uid} from {peer}")
     if player:
         player.last_scene_tool_unique_id = trap_bomb_uid
+        
+    if session:
+        if trap_bomb_uid in session.placed_scene_tools:
+            del session.placed_scene_tools[trap_bomb_uid]
+            
+        rsp = build_rsp_update_trap_bomb_state(
+            trap_bomb_uid=trap_bomb_uid,
+            item_state=1,  # InBag
+            attacker_bid=player.bid if player else None,
+        )
+        session.broadcast(rsp)
+        
     return session, player
 
 
@@ -14686,6 +17935,10 @@ def _v2_handle_req_throw_item(
         "ReqThrowItem "
         f"uid={throw_item_unique_id} client_param={req.get('client_param', 0)} from {peer}"
     )
+    if player and getattr(player, 'is_dead', False):
+        _log(f"ReqThrowItem ignored: player bid={player.bid} is dead")
+        return session, player
+
     if player:
         player.last_scene_tool_unique_id = throw_item_unique_id
 
@@ -14864,6 +18117,24 @@ def _v2_handle_req_operate_character(
         )
         if session:
             session.broadcast(rsp)
+            
+            # Check for melee static object destruction
+            hit_target = req.get('hit_target')
+            if hit_target:
+                static_objects = _extract_static_object_ids_from_melee_target(hit_target)
+                if static_objects:
+                    _log(f"[Melee] Destroying {len(static_objects)} static scene objects (carpets/paintings)")
+                    hit_pos = (0.0, 0.0, 0.0)
+                    trans = req.get('trans')
+                    if isinstance(trans, dict):
+                        pos = trans.get('pos')
+                        if isinstance(pos, dict):
+                            hit_pos = (float(pos.get('x', 0)), float(pos.get('y', 0)), float(pos.get('z', 0)))
+                    session.broadcast(build_rsp_destroy_scene_object(
+                        DESTROY_TYPE_MELEE_DAMAGE,
+                        hit_pos,
+                        static_objects
+                    ))
         else:
             sock.sendall(rsp)
     return session, player
@@ -15011,6 +18282,9 @@ def _v2_handle_req_remove_neuro_toxin_effect(
 
     parse_req_remove_neuro_toxin_effect(stream)
     _log(f"ReqRemoveNeuroToxinEffect from {peer}")
+    if session and player:
+        rsp = build_rsp_remove_neuro_toxin_operator(player.bid)
+        session.broadcast(rsp)
     return session, player
 
 
@@ -15099,17 +18373,27 @@ def _v2_handle_req_character_operate_blocking_board(
         _session_mark_player_placed_blocking_board(session, req.get('block_id'))
     if player:
         player.last_blocking_board_id = int(req.get('block_id', 0) or 0) & 0xFFFFFFFF
-    if player:
-        rsp = build_rsp_character_operate_blocking_board(
-            player.bid,
-            req['pose'],
-            req['block_id'],
-            req['op'],
-        )
+
+    player_bid = player.bid if player else 1
+    packets = DestructionEngine.handle_blocking_board_operate(
+        session=session,
+        board_id=req.get('block_id', 0),
+        op=req.get('op', 1),
+        pose=req.get('pose', {}),
+        player_bid=player_bid,
+        packet_builders={
+            'build_rsp_character_operate_blocking_board': build_rsp_character_operate_blocking_board,
+            'build_rsp_event_blocking_board_state': build_rsp_event_blocking_board_state,
+            'build_rsp_destroy_blocking_board': build_rsp_destroy_blocking_board,
+        },
+        log_fn=_log,
+    )
+    for pkt in packets:
         if session:
-            session.broadcast(rsp)
+            session.broadcast(pkt)
         else:
-            sock.sendall(rsp)
+            sock.sendall(pkt)
+
     return session, player
 
 
@@ -15130,29 +18414,299 @@ def _v2_handle_req_change_blocking_board_state(
     _log(f"ReqChangeBlockingBoardState id={req['id']} state={req['state']} from {peer}")
     if player:
         player.last_blocking_board_id = int(req.get('id', 0) or 0) & 0xFFFFFFFF
-    if session:
-        with session._lock:
-            board_id = int(req['id']) & 0xFFFFFFFF
-            board_state = int(req['state']) & 0xFF
-            session.last_blocking_board_id = board_id
-            session.blocking_board_states[board_id] = board_state
-            dyn = session.dynamic_walls.setdefault(
-                board_id,
-                {'state': board_state, 'blocks': set()},
-            )
-            dyn['state'] = board_state
-            if board_state != BLOCKING_BOARD_STATE_DEACTIVE:
-                if float(session.blocking_board_hp.get(board_id, 1.0)) <= 0.0:
-                    session.blocking_board_hp[board_id] = 1.0
-                    session.broken_walls.pop(board_id, None)
-                    dyn['blocks'] = set()
+
     player_id = int(player.uid) if (player and player.uid) else None
-    evt = build_rsp_event_blocking_board_state(req['id'], player_id, req['state'])
-    if session:
-        session.broadcast(evt)
-    else:
-        sock.sendall(evt)
+    packets = DestructionEngine.handle_blocking_board_state_change(
+        session=session,
+        board_id=req.get('id', 0),
+        state=req.get('state', 0),
+        player_id=player_id,
+        packet_builders={
+            'build_rsp_event_blocking_board_state': build_rsp_event_blocking_board_state,
+            'build_rsp_destroy_blocking_board': build_rsp_destroy_blocking_board,
+        },
+        log_fn=_log,
+    )
+    for pkt in packets:
+        if session:
+            session.broadcast(pkt)
+        else:
+            sock.sendall(pkt)
+
     return session, player
+
+
+def _is_jammed(session: BattleSession | None, pos: tuple[float, float, float], player: BattlePlayer, check_radius: float = 6.0) -> bool:
+    if session is None or pos == (0.0, 0.0, 0.0) or not player:
+        return False
+    for uid, t_data in session.placed_scene_tools.items():
+        if t_data.get('kind') == 29:  # ENTRY_TYPE_WIFI (Mute Jammer)
+            owner_bid = t_data.get('owner_bid', 0)
+            owner = session.players.get(owner_bid)
+            if owner and owner.camp != player.camp:
+                j_pos = t_data.get('pos')
+                if j_pos:
+                    dx = j_pos[0] - pos[0]
+                    dy = j_pos[1] - pos[1]
+                    dz = j_pos[2] - pos[2]
+                    if (dx*dx + dy*dy + dz*dz) <= check_radius**2:
+                        return True
+    return False
+
+
+def _is_intercepted_by_ads(session: BattleSession | None, pos: tuple[float, float, float], player: BattlePlayer, check_radius: float = 6.0) -> bool:
+    if session is None or pos == (0.0, 0.0, 0.0) or not player:
+        return False
+    for uid, t_data in session.placed_scene_tools.items():
+        if t_data.get('kind') == 38:  # ENTRY_TYPE_ACTIVE_DEFENSE_SYSTEM (Jäger ADS)
+            owner_bid = t_data.get('owner_bid', 0)
+            owner = session.players.get(owner_bid)
+            if owner and owner.camp != player.camp:
+                j_pos = t_data.get('pos')
+                if j_pos:
+                    dx = j_pos[0] - pos[0]
+                    dy = j_pos[1] - pos[1]
+                    dz = j_pos[2] - pos[2]
+                    if (dx*dx + dy*dy + dz*dz) <= check_radius**2:
+                        charges = t_data.setdefault('charges', 2)
+                        if charges > 0:
+                            t_data['charges'] = charges - 1
+                            return True
+    return False
+
+
+def _is_wall_electrified(session: BattleSession | None, wall_hint_id: int, player: BattlePlayer) -> bool:
+    if session is None or wall_hint_id is None or wall_hint_id == 0 or not player:
+        return False
+    for uid, t_data in session.placed_scene_tools.items():
+        if t_data.get('kind') == 16:  # ENTRY_TYPE_ELECTRIC_BOX (Bandit Battery)
+            w_hint = t_data.get('wall_hint')
+            if w_hint == wall_hint_id:
+                owner_bid = t_data.get('owner_bid', 0)
+                owner = session.players.get(owner_bid)
+                if owner and owner.camp != player.camp:
+                    return True
+    return False
+
+
+def _execute_character_action_explode(
+    req: dict,
+    sock: socket.socket,
+    peer: str,
+    _log: Callable,
+    session: BattleSession | None,
+    player: BattlePlayer | None,
+):
+    _log(f"ReqCharacterActionExplodeExplosive hand_tool_id={req.get('hand_tool_id', 0)} from {peer}")
+    if not player:
+        return
+
+    explosive_scene_tool_uid = int(
+        player.guide_c4_scene_tool_unique_id
+        or player.last_place_scene_tool_unique_id
+        or player.last_scene_tool_unique_id
+        or 0
+    ) & 0xFFFFFFFFFFFFFFFF
+
+    tool_pos = (0.0, 0.0, 0.0)
+    tool_kind = 0
+    wall_hint = None
+    if session is not None and explosive_scene_tool_uid in session.placed_scene_tools:
+        t_data = session.placed_scene_tools[explosive_scene_tool_uid]
+        tool_pos = t_data.get('pos', (0.0, 0.0, 0.0))
+        tool_kind = t_data.get('kind', 0)
+        wall_hint = t_data.get('wall_hint')
+
+    if tool_pos == (0.0, 0.0, 0.0):
+        tool_pos = player.last_place_scene_tool_pos
+    if tool_pos == (0.0, 0.0, 0.0):
+        tool_pos = player.last_grenade_pos if player.last_grenade_pos != (0.0, 0.0, 0.0) else getattr(player, 'last_character_pos', (0.0, 0.0, 0.0))
+    if not tool_kind:
+        tool_kind = player.last_place_scene_tool_type
+    if not tool_kind and explosive_scene_tool_uid > 0:
+        comp = _decode_unique_id_components(explosive_scene_tool_uid)
+        tool_kind = comp[0] if comp else 0
+
+    if _is_jammed(session, tool_pos, player) or _is_jammed(session, getattr(player, 'last_character_pos', (0.0, 0.0, 0.0)), player):
+        _log(f"Detonation BLOCKED by enemy Mute Jammer! (pos={tool_pos})")
+        return
+
+    # 1. Immediately send/broadcast RspCharacterActionExplode (0x20) so character plays detonate animation
+    rsp = build_rsp_character_action_explode(player.bid, req.get('hand_tool_id', 0))
+    if session:
+        session.broadcast(rsp)
+    else:
+        sock.sendall(rsp)
+
+    # Thrown grenade / C4 detonation is driven by ReqGrenadeExplosivePosNtf(remain=0)
+    if (
+        player.last_grenade_unique_id
+        and player.last_grenade_timeout_uid != player.last_grenade_unique_id
+    ):
+        timeout_rsp = build_rsp_grenade_time_out(player.last_grenade_unique_id)
+        ntf = build_req_grenade_explosive_pos_ntf(
+            player.last_grenade_unique_id,
+            0,
+            player.last_grenade_pos,
+        )
+        if session:
+            session.broadcast(ntf)
+            session.broadcast(timeout_rsp)
+        else:
+            sock.sendall(ntf)
+            sock.sendall(timeout_rsp)
+        _log(
+            f"sent RspGrenadeTimeOut grenade_id={player.last_grenade_unique_id} "
+            f"via ReqCharacterActionExplode to {peer}"
+        )
+        _log(
+            f"sent ReqGrenadeExplosivePosNtf grenade_id={player.last_grenade_unique_id} "
+            f"remain=0 via ReqCharacterActionExplode to {peer}"
+        )
+        player.last_grenade_timeout_uid = player.last_grenade_unique_id
+
+    hand_tool_id = int(req.get('hand_tool_id', 0) or 0)
+    if not hand_tool_id:
+        hand_tool_id = getattr(player, 'last_scene_tool_hand_item_id', 0) or 0
+
+    is_thermite = (
+        tool_kind == 24
+        or hand_tool_id in (203, 24)
+        or getattr(player, 'last_scene_tool_hand_item_id', 0) in (203, 24)
+        or getattr(player, 'last_place_scene_tool_type', 0) == 24
+    )
+    destroy_type = DESTROY_TYPE_THERMITE_BOMB if is_thermite else DESTROY_TYPE_EXPLOSIVE_DAMAGE
+    effect_type = EFFECT_TYPE_THERMITE_BOMB if is_thermite else EFFECT_TYPE_EXPLOSIVE
+
+    # 2. Immediately send RspUseSceneTool to activate client-side fuse VFX/SFX.
+    # For Thermite (kind=24): calls SceneThermiteCtrlr.Use() -> FuseEffect=true (sparks/burning audio).
+    # For Breach charge: triggers SceneExplosiveCtrlr.Use().
+    if explosive_scene_tool_uid > 0:
+        use_tool_pkt = build_rsp_use_scene_tool(
+            bid=player.bid,
+            hand_item_id=hand_tool_id,
+            scene_tool_unique_id=explosive_scene_tool_uid,
+            is_success=True,
+        )
+        _session_send_packets(session, sock, [use_tool_pkt])
+        _log(
+            "sent RspUseSceneTool "
+            f"uid={explosive_scene_tool_uid} hand_tool_id={hand_tool_id} bid={player.bid}"
+        )
+
+    # 3. Delay wall breach:
+    # Thermite has a 3.0s burning fuse before breaching the wall/reinforcement.
+    # Breach charge has a 0.25s delay so the detonator animation and charge explosion initiate first.
+    delay = 3.0 if is_thermite else 0.25
+
+    def _delayed_detonation_worker():
+        try:
+            if delay > 0.0:
+                time.sleep(delay)
+
+            if session is not None and getattr(session, '_round_finished', False):
+                return
+
+            if explosive_scene_tool_uid > 0:
+                delete_rsp = build_rsp_delete_scene_tool(
+                    scene_tool_unique_id=explosive_scene_tool_uid,
+                    kind=SCENE_TOOL_DELETE_KIND_USED,
+                    attacker_bid=player.bid,
+                    effect_type=effect_type,
+                )
+                _session_send_packets(session, sock, [delete_rsp])
+                _log(
+                    "sent RspDeleteSceneTool "
+                    f"uid={explosive_scene_tool_uid} kind={SCENE_TOOL_DELETE_KIND_USED} "
+                    f"attacker_bid={player.bid} effect={effect_type}"
+                )
+            else:
+                _log("skip RspDeleteSceneTool reason=no_scene_tool_uid")
+
+            explosion_damage_packets = _session_collect_explosive_structure_damage_packets(
+                session,
+                player,
+                damage_source=tool_pos,
+                destroy_type=destroy_type,
+                preferred_wall_id=wall_hint,
+                scene_tool_uid=explosive_scene_tool_uid,
+                _log=_log,
+            )
+            if explosion_damage_packets:
+                _session_send_packets(session, sock, explosion_damage_packets)
+                _log(
+                    f"delayed detonation completed delay={delay}s dtype={destroy_type} "
+                    f"packets={len(explosion_damage_packets)} to {peer}"
+                )
+
+            if explosive_scene_tool_uid > 0:
+                _session_mark_scene_tool_ended(session, explosive_scene_tool_uid)
+                if session is not None:
+                    session.placed_scene_tools.pop(explosive_scene_tool_uid, None)
+
+            state_source = session.game_state if session is not None else {}
+            if _is_guide_mode_game_state(state_source):
+                if not bool(player.guide_scripted_remote_kill_done):
+                    enemy_bid = _select_guide_enemy_bid(player)
+                    damage_source = _coerce_vector3_tuple(player.last_character_pos)
+                    kill_packets = [
+                        build_rsp_event_character_enemy_explosive_hurt(
+                            source_bid=player.bid,
+                            target_bid=enemy_bid,
+                            base_hp=0,
+                            extra_hp=0,
+                            explosive_pos=damage_source,
+                        ),
+                        build_rsp_character_hp_changed(
+                            bid=enemy_bid,
+                            base_hp=0,
+                            extra_hp=0,
+                            damage_type=EFFECT_TYPE_EXPLOSIVE,
+                            damage_source=damage_source,
+                        ),
+                        build_rsp_player_death(
+                            bid=enemy_bid,
+                            item_uid=0,
+                            attacker_bid=player.bid,
+                            damage_type=EFFECT_TYPE_EXPLOSIVE,
+                            pos=damage_source,
+                        ),
+                    ]
+                    _session_send_packets(session, sock, kill_packets)
+                    _log(
+                        "guide: scripted explosive enemy death "
+                        f"target_bid={enemy_bid} attacker_bid={player.bid} "
+                        f"src=({damage_source[0]:.2f},{damage_source[1]:.2f},{damage_source[2]:.2f})"
+                    )
+
+                    player.guide_scripted_remote_kill_done = True
+                    player.guide_pending_points.append({
+                        'action': POINT_ACTION_KILL_ENEMY_REMOTE_BOMB,
+                        'point': 100,
+                    })
+                    player.kills += 1
+                    player.score += 100
+                    if session is not None and enemy_bid in session.players:
+                        session.players[enemy_bid].deaths += 1
+                    if session is not None:
+                        session.broadcast_players_result()
+
+                    if session is not None:
+                        session.guide_pending_only_attackers_state = True
+                        session.guide_pending_only_attackers_at = time.time() + 0.75
+
+                    if _guide_get_critical_region_state(session) == CRITICAL_REGION_STATE_ONLY_DEFENDERS:
+                        _guide_push_critical_region_state(
+                            session,
+                            sock,
+                            state=CRITICAL_REGION_STATE_BOTH_PLAYERS,
+                            _log=_log,
+                            reason="post_explosive_remote_kill",
+                        )
+        except Exception as exc:
+            _log(f"error in delayed detonation: {exc}")
+
+    threading.Thread(target=_delayed_detonation_worker, daemon=True).start()
 
 
 def _v2_handle_req_character_action_explode(
@@ -15169,132 +18723,7 @@ def _v2_handle_req_character_action_explode(
     del battle_id, game_state, player_data
 
     req = parse_req_character_action_explode(stream)
-    _log(f"ReqCharacterActionExplodeExplosive hand_tool_id={req['hand_tool_id']} from {peer}")
-    if player:
-        rsp = build_rsp_character_action_explode(player.bid, req['hand_tool_id'])
-        if session:
-            session.broadcast(rsp)
-        else:
-            sock.sendall(rsp)
-
-        if (
-            player.last_grenade_unique_id
-            and player.last_grenade_timeout_uid != player.last_grenade_unique_id
-        ):
-            timeout_rsp = build_rsp_grenade_time_out(player.last_grenade_unique_id)
-            ntf = build_req_grenade_explosive_pos_ntf(
-                player.last_grenade_unique_id,
-                0,
-                player.last_grenade_pos,
-            )
-            if session:
-                session.broadcast(ntf)
-                session.broadcast(timeout_rsp)
-            else:
-                sock.sendall(ntf)
-                sock.sendall(timeout_rsp)
-            _log(
-                f"sent RspGrenadeTimeOut grenade_id={player.last_grenade_unique_id} "
-                f"via ReqCharacterActionExplode to {peer}"
-            )
-            _log(
-                f"sent ReqGrenadeExplosivePosNtf grenade_id={player.last_grenade_unique_id} "
-                f"remain=0 via ReqCharacterActionExplode to {peer}"
-            )
-            player.last_grenade_timeout_uid = player.last_grenade_unique_id
-
-        explosion_damage_packets = _session_collect_explosive_structure_damage_packets(
-            session,
-            player,
-            damage_source=player.last_grenade_pos,
-            _log=_log,
-        )
-        if explosion_damage_packets:
-            _session_send_packets(session, sock, explosion_damage_packets)
-
-        state_source = session.game_state if session is not None else {}
-        if _is_guide_mode_game_state(state_source):
-            explosive_scene_tool_uid = int(
-                player.guide_c4_scene_tool_unique_id
-                or player.last_place_scene_tool_unique_id
-                or player.last_scene_tool_unique_id
-                or 0
-            ) & 0xFFFFFFFFFFFFFFFF
-
-            if explosive_scene_tool_uid > 0:
-                delete_rsp = build_rsp_delete_scene_tool(
-                    scene_tool_unique_id=explosive_scene_tool_uid,
-                    kind=SCENE_TOOL_DELETE_KIND_USED,
-                    attacker_bid=player.bid,
-                    effect_type=EFFECT_TYPE_EXPLOSIVE,
-                )
-                _session_mark_scene_tool_ended(session, explosive_scene_tool_uid)
-                _session_send_packets(session, sock, [delete_rsp])
-                _log(
-                    "guide: sent RspDeleteSceneTool "
-                    f"uid={explosive_scene_tool_uid} kind={SCENE_TOOL_DELETE_KIND_USED} "
-                    f"attacker_bid={player.bid} effect={EFFECT_TYPE_EXPLOSIVE}"
-                )
-            else:
-                _log("guide: skip RspDeleteSceneTool reason=no_scene_tool_uid")
-
-            if not bool(player.guide_scripted_remote_kill_done):
-                enemy_bid = _select_guide_enemy_bid(player)
-                damage_source = _coerce_vector3_tuple(player.last_character_pos)
-                kill_packets = [
-                    build_rsp_event_character_enemy_explosive_hurt(
-                        source_bid=player.bid,
-                        target_bid=enemy_bid,
-                        base_hp=0,
-                        extra_hp=0,
-                        explosive_pos=damage_source,
-                    ),
-                    build_rsp_character_hp_changed(
-                        bid=enemy_bid,
-                        base_hp=0,
-                        extra_hp=0,
-                        damage_type=EFFECT_TYPE_EXPLOSIVE,
-                        damage_source=damage_source,
-                    ),
-                    build_rsp_player_death(
-                        bid=enemy_bid,
-                        item_uid=0,
-                        attacker_bid=player.bid,
-                        damage_type=EFFECT_TYPE_EXPLOSIVE,
-                        pos=damage_source,
-                    ),
-                ]
-                _session_send_packets(session, sock, kill_packets)
-                _log(
-                    "guide: scripted explosive enemy death "
-                    f"target_bid={enemy_bid} attacker_bid={player.bid} "
-                    f"src=({damage_source[0]:.2f},{damage_source[1]:.2f},{damage_source[2]:.2f})"
-                )
-
-                player.guide_scripted_remote_kill_done = True
-                player.guide_pending_points.append({
-                    'action': POINT_ACTION_KILL_ENEMY_REMOTE_BOMB,
-                    'point': 100,
-                })
-                _log(
-                    "guide: queued game points "
-                    f"action={POINT_ACTION_KILL_ENEMY_REMOTE_BOMB} point=100"
-                )
-
-                if session is not None:
-                    session.guide_pending_only_attackers_state = True
-                    # Let client process OnlyDefenders->BothPlayers first, then
-                    # advance to OnlyAttackers on the next movement/combat sync.
-                    session.guide_pending_only_attackers_at = time.time() + 0.75
-
-                if _guide_get_critical_region_state(session) == CRITICAL_REGION_STATE_ONLY_DEFENDERS:
-                    _guide_push_critical_region_state(
-                        session,
-                        sock,
-                        state=CRITICAL_REGION_STATE_BOTH_PLAYERS,
-                        _log=_log,
-                        reason="post_explosive_remote_kill",
-                    )
+    _execute_character_action_explode(req, sock, peer, _log, session, player)
     return session, player
 
 
@@ -15344,26 +18773,25 @@ def _v2_handle_req_character_install_reinforced(
 
     req = parse_req_character_install_reinforced(stream)
     _log(f"ReqCharacterInstallReinforced id={req['reinforced_id']} from {peer}")
-    if player and session:
-        _session_apply_reinforced_install(session, req['reinforced_id'], player.bid)
+    player_bid = player.bid if player else 1
 
-    if player:
-        rsp = build_rsp_character_install_reinforced(
-            player.bid,
-            req['pose'],
-            req['reinforced_id'],
-        )
-        state_rsp = build_rsp_reinforced_state_update(
-            req['reinforced_id'],
-            player.bid,
-            REINFORCED_STATE_ACTIVED1,
-        )
+    packets = DestructionEngine.handle_reinforced_install(
+        session=session,
+        reinforced_id=req.get('reinforced_id', 0),
+        pose=req.get('pose', {}),
+        player_bid=player_bid,
+        packet_builders={
+            'build_rsp_character_install_reinforced': build_rsp_character_install_reinforced,
+            'build_rsp_reinforced_state_update': build_rsp_reinforced_state_update,
+        },
+        log_fn=_log,
+    )
+    for pkt in packets:
         if session:
-            session.broadcast(rsp)
-            session.broadcast(state_rsp)
+            session.broadcast(pkt)
         else:
-            sock.sendall(rsp)
-            sock.sendall(state_rsp)
+            sock.sendall(pkt)
+
     return session, player
 
 
@@ -15543,7 +18971,7 @@ def _v2_handle_req_pillar_group_info(
     del peer, battle_id, game_state, player_data, _log
 
     parse_req_pillar_group_info(stream)
-    sock.sendall(build_rsp_pillar_group_info())
+    sock.sendall(build_rsp_pillar_group_info(getattr(session, 'broken_pillar_segments', None)))
     return session, player
 
 
@@ -15561,7 +18989,8 @@ def _v2_handle_req_security_camera_info(
     del peer, battle_id, game_state, player_data, _log
 
     parse_req_security_camera_info(stream)
-    sock.sendall(build_rsp_security_camera_info())
+    broken = getattr(session, 'broken_security_cameras', []) if session else []
+    sock.sendall(build_rsp_security_camera_info(broken))
     return session, player
 
 
@@ -15768,7 +19197,7 @@ def _v2_handle_req_players_result(
 ) -> tuple[BattleSession | None, BattlePlayer | None]:
     del battle_id, game_state, player_data
 
-    _handle_req_players_result(stream, sock, peer, _log)
+    _handle_req_players_result(stream, sock, peer, _log, session=session)
     return session, player
 
 
@@ -16662,7 +20091,7 @@ def _process_packet(
         req_0x01_variant = _select_req_0x01_variant(stream, in_gameplay_phase)
         if req_0x01_variant == 'pose':
             req = parse_req_character_pose(stream)
-            if player:
+            if player and not getattr(player, 'is_dead', False):
                 rsp = build_rsp_character_pose(player.bid, req['delta'])
                 if session:
                     session.broadcast(rsp)
@@ -16753,143 +20182,21 @@ def _process_packet(
                 sock.sendall(rsp)
 
     elif pkt_id == PKT_REQ_CHARACTER_GUN_FIRE:
-        req = parse_req_character_gun_fire(stream)
-        bullets = req.get('bullets')
-        bullet_count_dbg = len(bullets) if isinstance(bullets, list) else 0
-        destroy_type = DESTROY_TYPE_SHOT_GUN_DAMAGE if bullet_count_dbg >= 6 else DESTROY_TYPE_GUN_DAMAGE
-        _log(
-            "ReqCharacterGunFire "
-            f"type={int(req.get('gun_fire_type', 0)) & 0xFF} bullets={bullet_count_dbg} "
-            f"{_summarize_req_gun_fire_targets(req)} from {peer}"
+        next_session, next_player = _v2_handle_req_character_gun_fire(
+            stream=stream,
+            sock=sock,
+            peer=peer,
+            battle_id=battle_id,
+            game_state=game_state,
+            player_data=player_data,
+            _log=_log,
+            session=session,
+            player=player,
         )
-        if player:
-            rsp = build_rsp_event_character_gun_fire(player.bid, req['gun_fire_type'], req['bullets'])
-            if session:
-                session.broadcast(rsp)
-            else:
-                sock.sendall(rsp)
-
-            # Player-to-player gunfire hit and damage processing
-            if session and isinstance(req.get('bullets'), list):
-                hit_targets_for_hurt = []
-                for b_entry in req['bullets']:
-                    if not isinstance(b_entry, dict):
-                        continue
-                    tgt = b_entry.get('target_character')
-                    if isinstance(tgt, dict):
-                        target_bid = int(tgt.get('bid', 0))
-                        if target_bid in session.players and target_bid != player.bid:
-                            target_player = session.players[target_bid]
-                            if not getattr(target_player, 'is_dead', False):
-                                hit_targets_for_hurt.append({
-                                    'target': tgt,
-                                    'ray': b_entry.get('ray', {}),
-                                })
-                                hit_part = int(tgt.get('hit_part', 0))
-                                # Headshot = 100 dmg, body/limb = 35 dmg
-                                dmg_amount = 100 if hit_part == 1 else 35
-                                target_player.hp = max(0, getattr(target_player, 'hp', 100) - dmg_amount)
-                                _log(
-                                    f"[Combat] Player bid={player.bid} ({player.name}) HIT bid={target_bid} "
-                                    f"({target_player.name}) part={hit_part} damage={dmg_amount} hp={target_player.hp}"
-                                )
-                                hp_pkt = build_rsp_character_hp_changed(
-                                    bid=target_bid,
-                                    base_hp=target_player.hp,
-                                    extra_hp=0,
-                                    damage_type=1,
-                                    damage_source=getattr(player, 'last_character_pos', (0.0, 0.0, 0.0)),
-                                )
-                                session.broadcast(hp_pkt)
-
-                                if target_player.hp <= 0:
-                                    target_player.is_dead = True
-                                    _log(f"[Combat] Player bid={target_bid} ({target_player.name}) KILLED by bid={player.bid} ({player.name})!")
-                                    death_pkt = build_rsp_player_death(
-                                        bid=target_bid,
-                                        item_uid=0,
-                                        attacker_bid=player.bid,
-                                        damage_type=1,
-                                        pos=getattr(target_player, 'last_character_pos', (0.0, 0.0, 0.0)),
-                                    )
-                                    session.broadcast(death_pkt)
-
-                                    # Check team elimination
-                                    attackers_alive = any(
-                                        not getattr(p, 'is_dead', False)
-                                        for p in session.players.values()
-                                        if p.camp == BATTLE_CAMP_ATTACKER
-                                    )
-                                    defenders_alive = any(
-                                        not getattr(p, 'is_dead', False)
-                                        for p in session.players.values()
-                                        if p.camp == BATTLE_CAMP_DEFENDER
-                                    )
-                                    if not defenders_alive:
-                                        _log("[Combat] All Defenders eliminated -> Attackers Win!")
-                                        res_pkt = build_rsp_battle_result(reason=1, win_camp=BATTLE_CAMP_ATTACKER)
-                                        session.broadcast(res_pkt)
-                                        over_pkt = build_rsp_battle_over(reason=0)
-                                        session.broadcast(over_pkt)
-                                    elif not attackers_alive:
-                                        _log("[Combat] All Attackers eliminated -> Defenders Win!")
-                                        res_pkt = build_rsp_battle_result(reason=1, win_camp=BATTLE_CAMP_DEFENDER)
-                                        session.broadcast(res_pkt)
-                                        over_pkt = build_rsp_battle_over(reason=0)
-                                        session.broadcast(over_pkt)
-
-                if hit_targets_for_hurt:
-                    hurt_pkt = build_rsp_event_character_gun_hurt(player.bid, hit_targets_for_hurt)
-                    session.broadcast(hurt_pkt)
-
-            relive_packets = _session_collect_training_target_relive_packets(session)
-            if relive_packets:
-                _session_send_packets(session, sock, relive_packets)
-
-            damage_source = _extract_gun_fire_damage_source(req)
-            preferred_board_id = _extract_req_target_board_id_from_gun_fire(req)
-            target_block_indices = _extract_req_target_block_indices_from_gun_fire(req)
-            ray_samples = _extract_req_ray_samples_from_gun_fire(req)
-            _log(
-                "ReqCharacterGunFire structure-target "
-                f"id={int(preferred_board_id or 0)} blocks={target_block_indices} rays={len(ray_samples)}"
-            )
-            if TRAINING_TARGET_AUTODESTROY_ON_GUNFIRE:
-                destroy_packets = _session_destroy_first_training_target_packets(
-                    session,
-                    damage_source=damage_source,
-                )
-                if destroy_packets:
-                    _session_send_packets(session, sock, destroy_packets)
-                    _log(
-                        f"training target destroy emitted packets={len(destroy_packets)} "
-                        f"respawn_sec={TRAINING_TARGET_RESPAWN_SEC:.2f}"
-                    )
-
-            target_world_packets, target_personal_packets = _session_collect_training_target_gun_hit_packets(
-                session,
-                req,
-                player=player,
-                _log=_log,
-            )
-            if target_world_packets:
-                _session_send_packets(session, sock, target_world_packets)
-            if target_personal_packets:
-                for pkt in target_personal_packets:
-                    player.send_raw(pkt)
-
-            board_damage_packets = _session_collect_structure_damage_packets(
-                session,
-                destroy_type=destroy_type,
-                damage_source=damage_source,
-                preferred_board_id=preferred_board_id,
-                hit_count=1,
-                target_block_indices=target_block_indices,
-                ray_samples=ray_samples,
-                _log=_log,
-            )
-            if board_damage_packets:
-                _session_send_packets(session, sock, board_damage_packets)
+        if next_session is not None:
+            result['session'] = next_session
+        if next_player is not None:
+            result['player'] = next_player
 
     elif pkt_id == PKT_REQ_CHARACTER_ACTION_MELEE_ATTACK:
         req = parse_req_character_action_melee_attack(stream)
@@ -16912,7 +20219,34 @@ def _process_packet(
     elif pkt_id == PKT_REQ_CHARACTER_OPERATION:
         req = parse_req_character_operation(stream)
         if player:
-            rsp = build_rsp_character_operation(player.bid, req['tool_index'], req['operation'])
+            tool_index = req.get('tool_index', 0)
+            operation = req.get('operation', 0)
+            
+            cfg = _get_skill_reset_config(tool_index) or {}
+            current_time = time.time()
+            
+            # Prevent activation if on cooldown
+            if operation == 1:
+                cooldown_end = player.skill_cooldown_end.get(tool_index, 0.0)
+                if current_time < cooldown_end:
+                    _log(f"Blocked skill {tool_index} activation for {peer}, on cooldown for {cooldown_end - current_time:.1f}s")
+                    # Optionally sync CD back to client to correct UI state
+                    cd_total = cfg.get('cooldown_time', 0.0)
+                    if cd_total > 0 and session:
+                        sync_cd_pkt = build_rsp_sync_skill_cd(tool_index, int((cooldown_end - current_time) * 1000), int(cd_total * 1000))
+                        session.broadcast(sync_cd_pkt)
+                    return
+                player.active_skills_start[tool_index] = current_time
+            elif operation == 2:
+                # Started cooldown phase
+                cd_total = cfg.get('cooldown_time', 0.0)
+                if cd_total > 0:
+                    player.skill_cooldown_end[tool_index] = current_time + cd_total
+                    if session:
+                        sync_cd_pkt = build_rsp_sync_skill_cd(tool_index, int(cd_total * 1000), int(cd_total * 1000))
+                        session.broadcast(sync_cd_pkt)
+            
+            rsp = build_rsp_character_operation(player.bid, tool_index, operation)
             if session:
                 session.broadcast(rsp)
             else:
@@ -16943,9 +20277,6 @@ def _process_packet(
             )
             if session:
                 session.broadcast(rsp, exclude_bid=player.bid)
-                sock.sendall(rsp)
-            else:
-                sock.sendall(rsp)
 
     elif pkt_id == PKT_REQ_GAME_INFO:
         _handle_req_game_info(
@@ -16976,23 +20307,49 @@ def _process_packet(
             vehicle_id = int(player.last_unmanned_vehicle_id or 0)
         _log(f"ReqSwitchCurrentUnmannedVehicle vehicle_id={vehicle_id} from {peer}")
         if player and vehicle_id > 0:
-            player.last_unmanned_vehicle_id = vehicle_id
-            rsp = build_rsp_update_unmanned_vehicle_state(
-                bid=player.bid,
-                vehicle_id=vehicle_id,
-                relation=VEHICLE_RELATION_OPERATOR,
-                need_switch_to_character=False,
-            )
-            if session:
-                session.broadcast(rsp)
+            time_since_exit = time.time() - getattr(player, 'last_vehicle_exit_time', 0.0)
+            if time_since_exit < 1.5:
+                _log(f"ReqSwitchCurrentUnmannedVehicle ignored (exited drone {time_since_exit:.2f}s ago) for bid={player.bid}")
             else:
-                sock.sendall(rsp)
+                player.last_unmanned_vehicle_id = vehicle_id
+                is_dead = getattr(player, 'is_dead', False)
+                already_operated = False
+                if session:
+                    for other in session.players.values():
+                        if (
+                            other.bid != player.bid
+                            and not getattr(other, 'is_dead', False)
+                            and getattr(other, 'controlling_drone', False)
+                            and getattr(other, 'last_unmanned_vehicle_id', 0) == vehicle_id
+                        ):
+                            already_operated = True
+                            break
+
+                if is_dead or already_operated:
+                    relation = VEHICLE_RELATION_WATCHER
+                    player.controlling_drone = False
+                else:
+                    relation = VEHICLE_RELATION_OPERATOR
+                    player.controlling_drone = True
+
+                rsp = build_rsp_update_unmanned_vehicle_state(
+                    bid=player.bid,
+                    vehicle_id=vehicle_id,
+                    relation=relation,
+                    need_switch_to_character=False,
+                )
+                if session:
+                    session.broadcast(rsp)
+                else:
+                    sock.sendall(rsp)
 
     elif pkt_id == PKT_REQ_SWITCH_MONITOR_TO_CHARACTER:
         parse_req_switch_monitor_to_character(stream)
         monitor_id = int(player.last_monitor_id or 0) if player else 0
         _log(f"ReqSwitchMonitorToCharacter monitor_id={monitor_id} from {peer}")
         if player and monitor_id > 0:
+            player.operating_monitor = False
+            player.last_monitor_id = 0
             rsp = build_rsp_update_monitor_state(
                 bid=player.bid,
                 monitor_id=monitor_id,
@@ -17008,7 +20365,6 @@ def _process_packet(
                 session.broadcast(rsp)
             else:
                 sock.sendall(rsp)
-            player.last_monitor_id = 0
 
     elif pkt_id == PKT_REQ_SWITCH_CURRENT_MONITOR:
         req = parse_req_switch_current_monitor(stream)
@@ -17034,17 +20390,37 @@ def _process_packet(
                     "need_switch_to_character=0 (clear previous monitor)"
                 )
             player.last_monitor_id = monitor_id
+            is_dead = getattr(player, 'is_dead', False)
+            already_operated = False
+            if session:
+                for other in session.players.values():
+                    if (
+                        other.bid != player.bid
+                        and not getattr(other, 'is_dead', False)
+                        and getattr(other, 'operating_monitor', False)
+                        and getattr(other, 'last_monitor_id', 0) == monitor_id
+                    ):
+                        already_operated = True
+                        break
+
+            if is_dead or already_operated:
+                relation = MONITOR_RELATION_WATCHER
+                player.operating_monitor = False
+            else:
+                relation = MONITOR_RELATION_OPERATOR
+                player.operating_monitor = True
+
             packets.append(
                 build_rsp_update_monitor_state(
                     bid=player.bid,
                     monitor_id=monitor_id,
-                    relation=MONITOR_RELATION_OPERATOR,
+                    relation=relation,
                     need_switch_to_character=False,
                 )
             )
             _log(
                 "RspUpdateMonitorState "
-                f"bid={player.bid} monitor_id={monitor_id} relation={MONITOR_RELATION_OPERATOR} "
+                f"bid={player.bid} monitor_id={monitor_id} relation={relation} "
                 "need_switch_to_character=0"
             )
             if session:
@@ -17078,17 +20454,6 @@ def _process_packet(
                 session.broadcast(rsp_spawn)
             else:
                 sock.sendall(rsp_spawn)
-            if player:
-                rsp_state = build_rsp_update_unmanned_vehicle_state(
-                    bid=player.bid,
-                    vehicle_id=vehicle_id,
-                    relation=VEHICLE_RELATION_OPERATOR,
-                    need_switch_to_character=False,
-                )
-                if session:
-                    session.broadcast(rsp_state)
-                else:
-                    sock.sendall(rsp_state)
 
     elif pkt_id == PKT_REQ_UNMANNED_VEHICLE_POSE_DELTA:
         req = parse_req_unmanned_vehicle_pose_delta(stream)
@@ -17133,6 +20498,9 @@ def _process_packet(
             sock.sendall(rsp)
         if player and vehicle_id > 0:
             player.last_unmanned_vehicle_id = 0
+            player.last_unmanned_vehicle_pose = {}
+            player.last_vehicle_exit_time = time.time()
+            player.controlling_drone = False
             rsp_state = build_rsp_update_unmanned_vehicle_state(
                 bid=player.bid,
                 vehicle_id=vehicle_id,
@@ -17149,6 +20517,8 @@ def _process_packet(
         vehicle_id = int(player.last_unmanned_vehicle_id or 0) if player else 0
         _log(f"ReqSwitchUnmannedVehicleToCharacter vehicle_id={vehicle_id} from {peer}")
         if player and vehicle_id > 0:
+            player.last_vehicle_exit_time = time.time()
+            player.controlling_drone = False
             rsp = build_rsp_update_unmanned_vehicle_state(
                 bid=player.bid,
                 vehicle_id=vehicle_id,
@@ -17166,16 +20536,9 @@ def _process_packet(
                 sock.sendall(rsp)
 
     elif pkt_id == PKT_REQ_GRENADE_BEGIN:
-        req = parse_req_grenade_begin(stream)
-        _log(f"ReqGrenadeBegin grenade_id={req['grenade_unique_id']} from {peer}")
-        if player:
-            player.last_grenade_unique_id = req['grenade_unique_id']
-            player.last_grenade_timeout_uid = 0
-            rsp = build_rsp_grenade_begin(True, req['grenade_unique_id'])
-            if session:
-                session.broadcast(rsp)
-            else:
-                sock.sendall(rsp)
+        session, player = _v2_handle_req_grenade_begin(
+            stream, sock, peer, battle_id, game_state, player_data, _log, session, player
+        )
 
     elif pkt_id == PKT_REQ_CANCEL_THROW_GRENADE:
         req = parse_req_cancel_throw_grenade(stream)
@@ -17183,6 +20546,9 @@ def _process_packet(
         if player:
             player.last_grenade_unique_id = req['grenade_unique_id']
             player.last_grenade_timeout_uid = 0
+            uid = req['grenade_unique_id']
+            if hasattr(player, 'grenades_timeout'):
+                player.grenades_timeout.discard(uid)
             rsp = build_rsp_cancel_throw_grenade(True, req['grenade_unique_id'])
             if session:
                 session.broadcast(rsp)
@@ -17190,91 +20556,24 @@ def _process_packet(
                 sock.sendall(rsp)
 
     elif pkt_id == PKT_REQ_THROW_GRENADE_END:
-        req = parse_req_throw_grenade_end(stream)
-        _log(
-            f"ReqThrowGrenadeEnd grenade_id={req['grenade_unique_id']} "
-            f"pos={req['explosive_pos']} from {peer}"
+        session, player = _v2_handle_req_throw_grenade_end(
+            stream, sock, peer, battle_id, game_state, player_data, _log, session, player
         )
-        if player:
-            player.last_grenade_unique_id = req['grenade_unique_id']
-            player.last_grenade_pos = req['explosive_pos']
-            player.last_grenade_timeout_uid = 0
-            reporter_id = int(player.uid) if player.uid else int(player.bid)
-            rsp = build_rsp_throw_grenade_end(
-                reporter_id,
-                req['grenade_unique_id'],
-                req['explosive_pos'],
-                req['throw_transform'],
-            )
-            if session:
-                session.broadcast(rsp)
-            else:
-                sock.sendall(rsp)
 
     elif pkt_id == PKT_REQ_GRENADE_EXPLOSIVE_POS_REPORT:
-        req = parse_req_grenade_explosive_pos_report(stream)
-        if player:
-            player.last_grenade_unique_id = req['grenade_unique_id']
-            player.last_grenade_pos = req['explosive_pos']
-            rsp = build_rsp_grenade_explosive_pos_report(
-                req['grenade_unique_id'],
-                req['explosive_pos'],
-            )
-            if session:
-                session.broadcast(rsp)
-            else:
-                sock.sendall(rsp)
-
-            _log(
-                f"ReqGrenadeExplosivePosReport grenade_id={req['grenade_unique_id']} "
-                f"pos={req['explosive_pos']} from {peer}"
-            )
-            # Do not force timeout on the first B7 report. The client can emit
-            # multiple position reports and finalize later via explode/ntf(remain=0).
+        session, player = _v2_handle_req_grenade_explosive_pos_report(
+            stream, sock, peer, battle_id, game_state, player_data, _log, session, player
+        )
 
     elif pkt_id == PKT_RSP_GRENADE_EXPLOSIVE_POS_REPORT:
-        req = parse_rsp_grenade_explosive_pos_report(stream)
-        if player:
-            player.last_grenade_unique_id = req['grenade_unique_id']
-            player.last_grenade_pos = req['explosive_pos']
-            rsp = build_rsp_grenade_explosive_pos_report(
-                req['grenade_unique_id'],
-                req['explosive_pos'],
-            )
-            if session:
-                session.broadcast(rsp)
-            else:
-                sock.sendall(rsp)
+        session, player = _v2_handle_rsp_grenade_explosive_pos_report(
+            stream, sock, peer, battle_id, game_state, player_data, _log, session, player
+        )
 
     elif pkt_id == PKT_REQ_GRENADE_EXPLOSIVE_POS_NTF:
-        req = parse_req_grenade_explosive_pos_ntf(stream)
-        if player:
-            player.last_grenade_unique_id = req['grenade_unique_id']
-            player.last_grenade_pos = req['explosive_pos']
-            relay = build_req_grenade_explosive_pos_ntf(
-                req['grenade_unique_id'],
-                req['remain_count'],
-                req['explosive_pos'],
-            )
-            if session:
-                session.broadcast(relay)
-            else:
-                sock.sendall(relay)
-
-            if (
-                req['remain_count'] == 0
-                and player.last_grenade_timeout_uid != req['grenade_unique_id']
-            ):
-                timeout_rsp = build_rsp_grenade_time_out(req['grenade_unique_id'])
-                if session:
-                    session.broadcast(timeout_rsp)
-                else:
-                    sock.sendall(timeout_rsp)
-                _log(
-                    f"sent RspGrenadeTimeOut grenade_id={req['grenade_unique_id']} "
-                    f"via ReqGrenadeExplosivePosNtf(remain=0) to {peer}"
-                )
-                player.last_grenade_timeout_uid = req['grenade_unique_id']
+        session, player = _v2_handle_req_grenade_explosive_pos_ntf(
+            stream, sock, peer, battle_id, game_state, player_data, _log, session, player
+        )
 
     elif pkt_id == PKT_REQ_BOMB_EXPLOSIVE:
         req = parse_req_bomb_explosive(stream)
@@ -17337,7 +20636,7 @@ def _process_packet(
         )
 
     elif pkt_id == PKT_REQ_PLAYERS_RESULT:
-        _handle_req_players_result(stream, sock, peer, _log)
+        _handle_req_players_result(stream, sock, peer, _log, session=session)
 
     elif pkt_id == PKT_REQ_CHARACTER_MELEE_ATTACK:
         req = parse_req_character_melee_attack(stream)
@@ -17411,49 +20710,7 @@ def _process_packet(
 
     elif pkt_id == PKT_REQ_CHARACTER_ACTION_EXPLODE:
         req = parse_req_character_action_explode(stream)
-        _log(f"ReqCharacterActionExplodeExplosive hand_tool_id={req['hand_tool_id']} from {peer}")
-        if player:
-            rsp = build_rsp_character_action_explode(player.bid, req['hand_tool_id'])
-            if session:
-                session.broadcast(rsp)
-            else:
-                sock.sendall(rsp)
-
-            # PktCmdScenePropExplosive is driven by ReqGrenadeExplosivePosNtf.
-            if (
-                player.last_grenade_unique_id
-                and player.last_grenade_timeout_uid != player.last_grenade_unique_id
-            ):
-                timeout_rsp = build_rsp_grenade_time_out(player.last_grenade_unique_id)
-                ntf = build_req_grenade_explosive_pos_ntf(
-                    player.last_grenade_unique_id,
-                    0,
-                    player.last_grenade_pos,
-                )
-                if session:
-                    session.broadcast(ntf)
-                    session.broadcast(timeout_rsp)
-                else:
-                    sock.sendall(ntf)
-                    sock.sendall(timeout_rsp)
-                _log(
-                    f"sent RspGrenadeTimeOut grenade_id={player.last_grenade_unique_id} "
-                    f"via ReqCharacterActionExplode to {peer}"
-                )
-                _log(
-                    f"sent ReqGrenadeExplosivePosNtf grenade_id={player.last_grenade_unique_id} "
-                    f"remain=0 via ReqCharacterActionExplode to {peer}"
-                )
-                player.last_grenade_timeout_uid = player.last_grenade_unique_id
-
-            explosion_damage_packets = _session_collect_explosive_structure_damage_packets(
-                session,
-                player,
-                damage_source=player.last_grenade_pos,
-                _log=_log,
-            )
-            if explosion_damage_packets:
-                _session_send_packets(session, sock, explosion_damage_packets)
+        _execute_character_action_explode(req, sock, peer, _log, session, player)
 
     elif pkt_id == PKT_REQ_CHARACTER_OPERATE_EXPLOSIVE:
         req = parse_req_character_operate_explosive(stream)
@@ -17633,11 +20890,29 @@ def _process_packet(
             player.active_scene_tools.add(placed_uid)
             player.last_place_scene_tool_unique_id = placed_uid
             player.guide_c4_scene_tool_unique_id = placed_uid
+
+            tool_transform = req.get('transform') or {}
+            tool_pos = _coerce_vector3_tuple(tool_transform.get('position'), (0.0, 0.0, 0.0))
+            decoded_comp = _decode_unique_id_components(placed_uid)
+            tool_kind = decoded_comp[0] if decoded_comp else 0
+
+            player.last_place_scene_tool_pos = tool_pos
+            player.last_place_scene_tool_type = tool_kind
+
             if wall_hint_id is None:
                 wall_hint_id = _normalize_board_id(player.last_place_target_wall_id)
             if wall_hint_id is not None:
                 player.last_place_target_wall_id = wall_hint_id
                 _session_set_scene_tool_wall_hint(session, placed_uid, wall_hint_id)
+
+            if session is not None:
+                session.placed_scene_tools[placed_uid] = {
+                    'pos': tool_pos,
+                    'kind': tool_kind,
+                    'wall_hint': wall_hint_id,
+                    'owner_bid': player.bid,
+                }
+
             if (placed_uid & 0xFFFFFFFF) == 9 and session is not None:
                 transform = req.get('transform')
                 session.armor_packages[placed_uid] = {
@@ -17649,7 +20924,8 @@ def _process_packet(
                 session.broadcast(build_rsp_armor_package_info(session))
             _log(
                 "ReqCreatePlaceSceneTool "
-                f"uid={placed_uid} flags=0x{int(req.get('flags', 0) or 0) & 0xFF:02X} "
+                f"uid={placed_uid} kind={tool_kind} pos=({tool_pos[0]:.2f},{tool_pos[1]:.2f},{tool_pos[2]:.2f}) "
+                f"flags=0x{int(req.get('flags', 0) or 0) & 0xFF:02X} "
                 f"relevant={len(req.get('relevant_ids', []) or req.get('relevant_id', []))} "
                 f"affected={int(req.get('affected_id', 0) or 0)} "
                 f"wall_hint={wall_hint_id if wall_hint_id is not None else 0} from {peer}"
@@ -17668,17 +20944,87 @@ def _process_packet(
             else:
                 sock.sendall(rsp)
 
+            if tool_kind in (7, 24) and _is_wall_electrified(session, wall_hint_id, player):
+                _log(f"Charge {placed_uid} placed on ELECTRIFIED wall {wall_hint_id}, destroying immediately.")
+                if session and placed_uid in session.placed_scene_tools:
+                    session.placed_scene_tools.pop(placed_uid, None)
+                
+                del_pkt = build_rsp_delete_scene_tool(
+                    scene_tool_unique_id=placed_uid,
+                    kind=SCENE_TOOL_DELETE_KIND_DESTROY,
+                    attacker_bid=player.bid,
+                    effect_type=EFFECT_TYPE_ELECTRIC,
+                )
+                
+                if player.hp > 10:
+                    player.hp -= 10
+                
+                dmg_pkt = build_rsp_character_hp_changed(
+                    bid=player.bid,
+                    base_hp=player.hp,
+                    extra_hp=getattr(player, 'extra_hp', 0),
+                    damage_type=DESTROY_TYPE_ELECTRIC_DAMAGE,
+                    damage_source=tool_pos
+                )
+                
+                if session:
+                    session.broadcast(del_pkt)
+                    session.broadcast(dmg_pkt)
+                else:
+                    sock.sendall(del_pkt)
+                    sock.sendall(dmg_pkt)
+
+    elif pkt_id == PKT_REQ_DESTROY_SCENE_OBJECT:
+        req = parse_req_destroy_scene_object(stream)
+        destroy_type = req.get('destroy_type', 0)
+        destroy_pos = req.get('destroy_pos', (0.0, 0.0, 0.0))
+        destroy_objects = req.get('destroy_objects', [])
+        
+        _log(f"ReqDestroySceneObject type={destroy_type} pos={destroy_pos} objs={destroy_objects} from {peer}")
+        
+        rsp = build_rsp_destroy_scene_object(destroy_type, destroy_pos, destroy_objects)
+        if session:
+            session.broadcast(rsp)
+            for obj_id in destroy_objects:
+                if obj_id in session.placed_scene_tools:
+                    _log(f"Destroyed SceneTool {obj_id} by ReqDestroySceneObject")
+                    del_pkt = build_rsp_delete_scene_tool(
+                        scene_tool_unique_id=obj_id,
+                        kind=SCENE_TOOL_DELETE_KIND_DESTROY,
+                        attacker_bid=player.bid if player else 0,
+                        effect_type=_destroy_type_to_effect_type(destroy_type),
+                    )
+                    session.broadcast(del_pkt)
+                    session.placed_scene_tools.pop(obj_id, None)
+        else:
+            sock.sendall(rsp)
+
     elif pkt_id == PKT_REQ_THROW_SCENE_TOOL:
         req = parse_req_throw_scene_tool(stream)
         tool = req['tool']
         scene_tool_unique_id = int(tool.get('scene_tool_unique_id', 0) or 0)
+        tool_transform = tool.get('transform') or {}
+        tool_pos = _coerce_vector3_tuple(tool_transform.get('position'), (0.0, 0.0, 0.0))
+        decoded_comp = _decode_unique_id_components(scene_tool_unique_id)
+        tool_kind = decoded_comp[0] if decoded_comp else 0
         _log(
             "ReqThrowSceneTool "
-            f"scene_tool_unique_id={scene_tool_unique_id} from {peer}"
+            f"scene_tool_unique_id={scene_tool_unique_id} kind={tool_kind} "
+            f"pos=({tool_pos[0]:.2f},{tool_pos[1]:.2f},{tool_pos[2]:.2f}) from {peer}"
         )
         if player:
             player.last_scene_tool_unique_id = scene_tool_unique_id
             player.active_scene_tools.add(scene_tool_unique_id)
+            player.last_place_scene_tool_unique_id = scene_tool_unique_id
+            player.last_place_scene_tool_pos = tool_pos
+            player.last_place_scene_tool_type = tool_kind
+        if session is not None:
+            session.placed_scene_tools[scene_tool_unique_id] = {
+                'pos': tool_pos,
+                'kind': tool_kind,
+                'wall_hint': None,
+                'owner_bid': player.bid if player else 0,
+            }
         _session_mark_scene_tool_active(session, scene_tool_unique_id)
         _session_update_scene_tool_board_hint(
             session,
@@ -17718,8 +21064,13 @@ def _process_packet(
         req = parse_req_report_throw_scene_tool_final_position(stream)
         tool = req['tool']
         scene_tool_unique_id = int(tool.get('scene_tool_unique_id', 0) or 0)
+        tool_pos = _extract_scene_tool_position(tool)
         if player:
             player.last_scene_tool_unique_id = scene_tool_unique_id
+            player.last_place_scene_tool_unique_id = scene_tool_unique_id
+            player.last_place_scene_tool_pos = tool_pos
+        if session is not None and scene_tool_unique_id in session.placed_scene_tools:
+            session.placed_scene_tools[scene_tool_unique_id]['pos'] = tool_pos
         _session_mark_scene_tool_ended(session, scene_tool_unique_id)
         timestamp_ms = int(time.time() * 1000.0) & 0xFFFFFFFF
         rsp = build_rsp_report_throw_scene_tool_final_position(timestamp_ms, tool)
@@ -17735,8 +21086,13 @@ def _process_packet(
         req = parse_req_report_throw_scene_tool_final_position_with_relation(stream)
         tool = req['tool']
         scene_tool_unique_id = int(tool.get('scene_tool_unique_id', 0) or 0)
+        tool_pos = _extract_scene_tool_position(tool)
         if player:
             player.last_scene_tool_unique_id = scene_tool_unique_id
+            player.last_place_scene_tool_unique_id = scene_tool_unique_id
+            player.last_place_scene_tool_pos = tool_pos
+        if session is not None and scene_tool_unique_id in session.placed_scene_tools:
+            session.placed_scene_tools[scene_tool_unique_id]['pos'] = tool_pos
         _session_mark_scene_tool_ended(session, scene_tool_unique_id)
         rsp = build_rsp_report_throw_scene_tool_final_position_with_relation(tool)
         end_rsp = build_rsp_throw_scene_tool_end(scene_tool_unique_id)
@@ -17913,11 +21269,49 @@ def _process_packet(
             player.camp = p_camp
             player.team = 2 if p_camp == 2 else 1
             player.name = p_room_entry.get("name", player_data.get('name', f"Player{player.uid}"))
+            p_cid = int(p_room_entry.get("character_id", 0) or 0)
+            if p_cid > 0:
+                player.character_id = p_cid
+            if p_room_entry.get("primary_weapon"):
+                player.primary_weapon = p_room_entry.get("primary_weapon")
+            if p_room_entry.get("secondary_weapon"):
+                player.secondary_weapon = p_room_entry.get("secondary_weapon")
+            if p_room_entry.get("main_skill_id"):
+                player.main_skill_id = p_room_entry.get("main_skill_id")
+            if p_room_entry.get("sub_skill_id"):
+                player.sub_skill_id = p_room_entry.get("sub_skill_id")
+            if p_room_entry.get("skins"):
+                player.skins = p_room_entry.get("skins")
+            if p_room_entry.get("region_id") is not None:
+                player.born_region_id = p_room_entry.get("region_id")
+            elif p_room_entry.get("spawn_region_id") is not None:
+                player.born_region_id = p_room_entry.get("spawn_region_id")
         else:
             p_camp = int(game_state.get('camp', 1) or 1)
             player.camp = p_camp
             player.team = 2 if p_camp == 2 else 1
             player.name = player_data.get('name', 'Player')
+            p_cid = int(game_state.get('character_id', 0) or 0)
+            if p_cid > 0:
+                player.character_id = p_cid
+            if game_state.get("primary_weapon"):
+                player.primary_weapon = game_state.get("primary_weapon")
+            if game_state.get("secondary_weapon"):
+                player.secondary_weapon = game_state.get("secondary_weapon")
+            if game_state.get("main_skill_id"):
+                player.main_skill_id = game_state.get("main_skill_id")
+            if game_state.get("sub_skill_id"):
+                player.sub_skill_id = game_state.get("sub_skill_id")
+            if game_state.get("skins"):
+                player.skins = game_state.get("skins")
+            if player.camp == BATTLE_CAMP_ATTACKER:
+                if game_state.get("attacker_spawn_region_id") is not None:
+                    player.born_region_id = game_state.get("attacker_spawn_region_id")
+            else:
+                if game_state.get("region_id") is not None:
+                    player.born_region_id = game_state.get("region_id")
+                elif game_state.get("spawn_region_id") is not None:
+                    player.born_region_id = game_state.get("spawn_region_id")
 
         ci = req.get('client_info', {})
         _log(
@@ -17950,30 +21344,45 @@ def _process_packet(
 
     elif pkt_id == PKT_REQ_LOAD_PROGRESS:
         req = parse_req_load_progress(stream)
-        _log(f"ReqLoadProgress progress={req['progress']:.2f} from {peer}")
+        prog = req.get('progress', 0.0)
+        try:
+            prog = float(prog)
+            if math.isnan(prog) or math.isinf(prog):
+                prog = 1.0
+        except Exception:
+            prog = 0.0
+        prog = max(0.0, min(1.0, prog))
+
+        _log(f"ReqLoadProgress progress={prog:.2f} from {peer}")
 
         if player:
-            player.progress = req['progress']
-            # Echo progress back to all players
+            player.progress = prog
+            player._last_progress_at = time.time()
             bid = player.bid
-            rsp = build_rsp_load_progress(bid, req['progress'])
+            rsp = build_rsp_load_progress(bid, prog)
             if session:
                 session.broadcast(rsp)
             else:
                 sock.sendall(rsp)
 
-            # Send load-success only in late loading and allow repeats.
-            # Some client states can ignore an early single success packet.
-            # Do NOT send GameStart here: rsp_game_start while still loading can
-            # force reconnect/disconnect path.
-            if req['progress'] >= 0.90:
+            if prog >= 1.0:
+                player.loaded = True
+
+        if session and session._started:
+            if player and player.loaded:
+                session.send_game_start_to_player(player)
+            return result
+
+        if player and player.loaded:
+            if session:
+                session._send_load_success_once(player)
+                if session.all_loaded():
+                    _log("all connected players reached 100% progress (legacy), scheduling game start!")
+                    session.schedule_game_start(delay=1.0)
+            else:
                 success_pkt = build_rsp_battle_load_success(player.bid)
-                if session:
-                    session.broadcast(success_pkt)
-                    _log(f"resent RspBattleLoadSuccess bid={player.bid} to all players")
-                else:
-                    sock.sendall(success_pkt)
-                    _log(f"sent RspBattleLoadSuccess bid={player.bid} to {peer}")
+                sock.sendall(success_pkt)
+                _log(f"sent RspBattleLoadSuccess bid={player.bid} to {peer}")
 
     elif pkt_id == PKT_REQ_ROOM_LOADED:
         parse_req_room_loaded(stream)
@@ -17981,10 +21390,18 @@ def _process_packet(
 
         if player:
             player.loaded = True
+            player.progress = 1.0
+            player._last_progress_at = time.time()
 
         if session and player:
             # RspBattleLoadSuccess carries bid (u8), not a boolean flag.
             session._send_load_success_once(player)
+
+        if session and session._started:
+            if player:
+                _log(f"player bid={player.bid} uid={player.uid} sent ReqRoomLoaded into already-started session (legacy); catching up")
+                session.send_game_start_to_player(player)
+            return result
 
         should_start_now = False
         if session:

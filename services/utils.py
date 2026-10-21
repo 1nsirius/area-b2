@@ -162,13 +162,31 @@ def _ensure_auth_contract(resp: dict, endpoint: str, realm_host: str, game_port:
     data["server"] = servers[0]
     resp["servers"] = servers
 
-    for target in (resp, data, pinfo):
+    chat_port = int(os.environ.get("CHAT_PORT", "12345"))
+    holo_url = f"https://{realm_host}"
+
+    for target in (resp, data):
         target["region"] = region
         target["area"] = area
         target["serverId"] = server_id
         target["server_id"] = server_id
         target["serverName"] = server_name
         target["server_name"] = server_name
+        target["chatHost"] = target.get("chatHost") or realm_host
+        target["chat_host"] = target.get("chat_host") or realm_host
+        target["chatPort"] = target.get("chatPort") or chat_port
+        target["chat_port"] = target.get("chat_port") or chat_port
+        target["user-info"] = target.get("user-info") or holo_url
+        target["user_info"] = target.get("user_info") or holo_url
+        target["user-info-url"] = target.get("user-info-url") or holo_url
+        target["user_info_url"] = target.get("user_info_url") or holo_url
+
+    pinfo["region"] = region
+    pinfo["area"] = area
+    pinfo["serverId"] = server_id
+    pinfo["server_id"] = server_id
+    pinfo["serverName"] = server_name
+    pinfo["server_name"] = server_name
 
     player_info = data.get("player_info")
     if not isinstance(player_info, dict):

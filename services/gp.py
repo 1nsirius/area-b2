@@ -5,6 +5,8 @@ DIR = Path(__file__).resolve().parent.parent
 
 import services.utils as utils
 import services.holo
+import services.db as db
+import database
 import time
 import hashlib
 
@@ -25,6 +27,60 @@ def process_login(req, pid, vendor, platform, region_code) -> tuple[int, str]:
 import time
 import hashlib
 
+def extract_account_login_from_request(req_json: dict) -> str | None:
+    if not isinstance(req_json, dict):
+        return None
+
+    candidates = [
+        req_json.get("account"),
+        req_json.get("accountId"),
+        req_json.get("account_id"),
+        req_json.get("user"),
+        req_json.get("username"),
+        req_json.get("user_id"),
+        req_json.get("userId"),
+        req_json.get("pid"),
+        req_json.get("player_id"),
+        req_json.get("playerId"),
+        req_json.get("with_account"),
+        req_json.get("withAccount"),
+        req_json.get("withAccountId"),
+        req_json.get("thirdPartyToken"),
+        req_json.get("agstToken"),
+        req_json.get("ptoken"),
+        req_json.get("token"),
+    ]
+
+    data = req_json.get("data")
+    if isinstance(data, dict):
+        candidates.extend([
+            data.get("account"),
+            data.get("accountId"),
+            data.get("account_id"),
+            data.get("user"),
+            data.get("username"),
+            data.get("user_id"),
+            data.get("userId"),
+            data.get("pid"),
+            data.get("player_id"),
+            data.get("playerId"),
+            data.get("with_account"),
+            data.get("withAccount"),
+            data.get("withAccountId"),
+            data.get("thirdPartyToken"),
+            data.get("agstToken"),
+            data.get("ptoken"),
+            data.get("token"),
+        ])
+
+    for c in candidates:
+        if c is not None:
+            s = str(c).strip()
+            if s and s != "None" and s != "null":
+                return s
+    return None
+
+
 def generate_acquire_response(req_json: dict, host: str, context: dict) -> dict:
     req = req_json
     # IMPORTANT: gangplank_v2_post() passes the whole JSON object to Lua,
@@ -41,18 +97,24 @@ def generate_acquire_response(req_json: dict, host: str, context: dict) -> dict:
     proj_code = req.get("projCode") or req.get("game") or "P10470"
     ptoken = req.get("ptoken") or req.get("token")
 
-    pid_raw = req.get("pid") or req.get("player_id") or req.get("accountId") or req.get("account_id") or req.get("account") or req.get("user") or req.get("username")
-    if pid_raw is None:
-        pid_raw = "1000001"
-    pid = str(pid_raw).strip() or "1000001"
-    if not pid.isdigit():
-        uid_num = db._get_or_create_uid_for_account(pid)
-        pid = str(uid_num)
-    else:
-        uid_num = int(pid)
+    login_str = extract_account_login_from_request(req)
+    if not login_str:
+        login_str = f"Guest_{int(time.time())}"
 
-    account_id_raw = req.get("accountId") or req.get("account_id") or pid
-    account_id = str(account_id_raw)
+    uid_num, is_new_account = database.get_or_create_uid_and_flag_for_account(login_str)
+    pid = str(uid_num)
+
+    profile = database.ensure_profile(uid_num, name=login_str if is_new_account else "")
+    prof_name = profile.get("name", login_str)
+    prof_level = profile.get("level", 1)
+
+    log_msg = (
+        f"[AUTH] HTTP LOGIN | Input='{login_str}' ==> UID={uid_num} | "
+        f"Profile='{prof_name}' | Level={prof_level} | Status={'NEW CREATED' if is_new_account else 'EXISTING'}"
+    )
+    utils._append_utf8_log(log_msg)
+
+    account_id = pid
 
     vendor = req.get("vendor") or req.get("vendorId") or req.get("channel") or platform or "AGST"
 
@@ -117,12 +179,12 @@ def generate_acquire_response(req_json: dict, host: str, context: dict) -> dict:
 
     guest = req.get("guest")
     if guest is None:
-        guest = False
+        guest = is_new_account
     is_create = req.get("is_create")
     if is_create is None:
         is_create = req.get("isCreate")
     if is_create is None:
-        is_create = False
+        is_create = is_new_account
 
     # A lot of SDK/Lua variants expect at least one game server entry
     # and may use serverId as a table key (crashes if nil).
@@ -241,6 +303,22 @@ def generate_acquire_response(req_json: dict, host: str, context: dict) -> dict:
     }
     holo_token = services.holo.holo_player_token_payload(pid)
 
+    chat_port = int(os.environ.get("CHAT_PORT", "12345"))
+    holo_url = f"https://{realm_host}"
+    chat_hints = {
+        "chat_host": realm_host,
+        "chatHost": realm_host,
+        "chat_port": chat_port,
+        "chatPort": chat_port,
+        "user-info": holo_url,
+        "user_info": holo_url,
+        "user-info-url": holo_url,
+        "user_info_url": holo_url,
+        "user_info_svr": holo_url,
+        "user_info_svr_url": holo_url,
+    }
+    server_entry.update(chat_hints)
+
     # Lightweight debug to correlate client expectations.
     try:
         req_keys = ",".join(sorted(map(str, req.keys())))
@@ -264,6 +342,7 @@ def generate_acquire_response(req_json: dict, host: str, context: dict) -> dict:
         "lobby_ip_port": realm,
         "LobbyServerIpAddress": realm_host,
         "LobbyServerPort": context['GAME_PORT'],
+        **chat_hints,
     }
 
     resp = {
@@ -385,9 +464,9 @@ def generate_acquire_response(req_json: dict, host: str, context: dict) -> dict:
                     "zoneID": server_id,
                     "zone_id": server_id,
                     "zoneIdNum": int(server_id),
-                    "roleId": "0",
-                    "roleName": "",
-                    "roleLevel": 1,
+                    "roleId": pid,
+                    "roleName": prof_name,
+                    "roleLevel": prof_level,
                 },
                 "playerInfo": {
                     "pid": pid,
@@ -426,9 +505,9 @@ def generate_acquire_response(req_json: dict, host: str, context: dict) -> dict:
                     "zoneID": server_id,
                     "zone_id": server_id,
                     "zoneIdNum": int(server_id),
-                    "roleId": "0",
-                    "roleName": "",
-                    "roleLevel": 1,
+                    "roleId": pid,
+                    "roleName": prof_name,
+                    "roleLevel": prof_level,
                 },
                 "login_info": {
                     "platform": platform,
@@ -763,6 +842,22 @@ def generate_login_response(req_json: dict, host: str, context: dict) -> dict:
     server_entry["sdkServerName"] = sdk_server_name
     server_entry["sdk_server_name"] = sdk_server_name
 
+    chat_port = int(os.environ.get("CHAT_PORT", "12345"))
+    holo_url = f"https://{realm_host}"
+    chat_hints = {
+        "chat_host": realm_host,
+        "chatHost": realm_host,
+        "chat_port": chat_port,
+        "chatPort": chat_port,
+        "user-info": holo_url,
+        "user_info": holo_url,
+        "user-info-url": holo_url,
+        "user_info_url": holo_url,
+        "user_info_svr": holo_url,
+        "user_info_svr_url": holo_url,
+    }
+    server_entry.update(chat_hints)
+
     if isinstance(resp.get("data"), dict):
         resp["data"]["server"] = server_entry
         resp["data"]["server_info"] = server_entry
@@ -787,6 +882,7 @@ def generate_login_response(req_json: dict, host: str, context: dict) -> dict:
         "lobby_ip_port": realm,
         "LobbyServerIpAddress": realm_host,
         "LobbyServerPort": context['GAME_PORT'],
+        **chat_hints,
     }
     try:
         resp.update(lobby_hints)

@@ -51,6 +51,7 @@ def _profile_payload(profile: dict) -> dict:
         "is_allow_watch": True,
         "rank_level": rank_score // 100,
         "state": cur_state,
+        "update_time": int(time.time()),
         "player_info": {
             "player_id": uid_s,
             "playerId": uid_s,

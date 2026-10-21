@@ -1,0 +1,2851 @@
+{
+  "schema_version": 1,
+  "maps": {
+    "0": {
+      "bundle": "24be01822f8cb97540f8d3a4aed84e6f.unity3d",
+      "walls": [
+        {
+          "id": 26,
+          "name": "break_wall250",
+          "anchor": [
+            4.833,
+            -0.668,
+            -12.767
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 1,
+          "name": "break_wall250",
+          "anchor": [
+            -1.25,
+            -0.677,
+            -45.984
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        }
+      ]
+    },
+    "1": {
+      "bundle": "4001839f43e3ba8b935ece9c542c1ae4.unity3d",
+      "walls": [
+        {
+          "id": 54,
+          "name": "f1_break_roof03",
+          "anchor": [
+            3.078,
+            1.016,
+            7.748
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 89,
+          "name": "break_wall250 (1)",
+          "anchor": [
+            0.284,
+            -5.396,
+            -3.541
+          ],
+          "yaw_deg": 90.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 44,
+          "name": "break_wall250x2_175x2",
+          "anchor": [
+            -2.608,
+            3.031,
+            7.4
+          ],
+          "yaw_deg": 90.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 56,
+          "name": "break_wall250x4",
+          "anchor": [
+            3.441,
+            -0.636,
+            -0.073
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 400,
+          "name": "break_lockfloor01 (6)",
+          "anchor": [
+            2.598,
+            5.052,
+            -11.797
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 51,
+          "name": "f2_break_floor03",
+          "anchor": [
+            3.078,
+            1.395,
+            7.76
+          ],
+          "yaw_deg": -180.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 45,
+          "name": "break_wall175x4",
+          "anchor": [
+            8.736,
+            3.031,
+            6.63
+          ],
+          "yaw_deg": 90.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 50,
+          "name": "f2_break_floor01",
+          "anchor": [
+            3.06,
+            1.395,
+            -7.534
+          ],
+          "yaw_deg": -180.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 53,
+          "name": "f1_break_roof01",
+          "anchor": [
+            3.025,
+            1.016,
+            -8.073
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 48,
+          "name": "break_wall250x2 (4)",
+          "anchor": [
+            6.023,
+            3.031,
+            -2.207
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 46,
+          "name": "break_wall250x2",
+          "anchor": [
+            8.736,
+            3.031,
+            -4.92
+          ],
+          "yaw_deg": 90.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 90,
+          "name": "break_wall250x2 (4)",
+          "anchor": [
+            2.938,
+            -5.395,
+            6.814
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 47,
+          "name": "break_wall250x2 (3)",
+          "anchor": [
+            -2.605,
+            3.031,
+            -4.794
+          ],
+          "yaw_deg": 90.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 91,
+          "name": "break_wall250x2 (4)",
+          "anchor": [
+            -3.984,
+            -5.396,
+            -1.443
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 49,
+          "name": "break_wall250x2",
+          "anchor": [
+            -9.431,
+            3.034,
+            5.145
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 92,
+          "name": "break_wall250x2 (5)",
+          "anchor": [
+            -6.564,
+            -5.396,
+            1.129
+          ],
+          "yaw_deg": 90.06,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 401,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            2.598,
+            4.652,
+            -11.798
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 398,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            12.22,
+            4.662,
+            11.013
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 371,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            7.471,
+            -2.648,
+            -8.689
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 55,
+          "name": "break_wall175x3",
+          "anchor": [
+            2.531,
+            -0.612,
+            -16.599
+          ],
+          "yaw_deg": -90.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 65,
+          "name": "break_wall175X2",
+          "anchor": [
+            0.043,
+            -0.619,
+            -7.753
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 71,
+          "name": "break_wall175X2",
+          "anchor": [
+            12.292,
+            -0.619,
+            5.781
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 37,
+          "name": "break_wall175X2",
+          "anchor": [
+            -4.907,
+            6.681,
+            -10.573
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 13,
+          "name": "break_wall175X2",
+          "anchor": [
+            8.447,
+            6.681,
+            8.458
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 25,
+          "name": "break_wall175X2",
+          "anchor": [
+            -6.747,
+            6.681,
+            -14.858
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 31,
+          "name": "break_wall175X2",
+          "anchor": [
+            4.905,
+            6.681,
+            -4.046
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 19,
+          "name": "break_wall175X2",
+          "anchor": [
+            0.646,
+            6.681,
+            -2.206
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 7,
+          "name": "break_wall175X2",
+          "anchor": [
+            0.124,
+            6.681,
+            7.945
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 93,
+          "name": "break_wall250",
+          "anchor": [
+            5.571,
+            -5.39,
+            -0.867
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 85,
+          "name": "break_wall250",
+          "anchor": [
+            1.663,
+            -5.399,
+            -2.206
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 43,
+          "name": "f3_break_floor01",
+          "anchor": [
+            -0.912,
+            5.045,
+            -7.553
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 394,
+          "name": "break_lockfloor03",
+          "anchor": [
+            -10.039,
+            1.42,
+            -14.494
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 52,
+          "name": "f2_break_roof01",
+          "anchor": [
+            -1.612,
+            4.665,
+            -7.563
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 382,
+          "name": "break_lockfloor01 (6)",
+          "anchor": [
+            5.82,
+            1.406,
+            -8.29
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 377,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -6.171,
+            -2.635,
+            10.204
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 383,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            5.82,
+            1.006,
+            -8.291
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 386,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -8.8,
+            1.006,
+            6.306
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 389,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -10.535,
+            4.668,
+            -1.124
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 395,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -10.039,
+            1.02,
+            -14.495
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 374,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            9.664,
+            -2.654,
+            11.656
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 392,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -4.337,
+            8.309,
+            -17.867
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 380,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -0.987,
+            -2.654,
+            -12.689
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 1,
+          "name": "break_wall250x2",
+          "anchor": [
+            5.857,
+            6.681,
+            2.173
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 97,
+          "name": "can_carpet01",
+          "anchor": [
+            3.189,
+            1.399,
+            8.306
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 12
+        },
+        {
+          "id": 98,
+          "name": "can_carpet01 (1)",
+          "anchor": [
+            2.656,
+            1.403,
+            -8.01
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 12
+        },
+        {
+          "id": 391,
+          "name": "break_lockfloor03 (1)",
+          "anchor": [
+            -4.337,
+            8.709,
+            -17.866
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 373,
+          "name": "break_lockfloor03 (1)",
+          "anchor": [
+            9.664,
+            -2.254,
+            11.657
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 397,
+          "name": "break_lockfloor03",
+          "anchor": [
+            12.22,
+            5.062,
+            11.014
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 388,
+          "name": "break_lockfloor03 (2)",
+          "anchor": [
+            -10.535,
+            5.068,
+            -1.123
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 379,
+          "name": "break_lockfloor03 (3)",
+          "anchor": [
+            -0.987,
+            -2.254,
+            -12.688
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 370,
+          "name": "break_lockfloor03 (1)",
+          "anchor": [
+            7.471,
+            -2.248,
+            -8.688
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 376,
+          "name": "break_lockfloor03 (2)",
+          "anchor": [
+            -6.171,
+            -2.235,
+            10.205
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 385,
+          "name": "break_lockfloor03 (1)",
+          "anchor": [
+            -8.8,
+            1.406,
+            6.307
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 57,
+          "name": "break_wall175x3",
+          "anchor": [
+            -1.797,
+            -0.619,
+            -2.788
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 77,
+          "name": "break_wall175x3",
+          "anchor": [
+            0.281,
+            -5.395,
+            -8.118
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        }
+      ]
+    },
+    "2": {
+      "bundle": "2f69daace53e2b34f62f6f14a2e1fd23.unity3d",
+      "walls": [
+        {
+          "id": 166,
+          "name": "f1_break_roof03",
+          "anchor": [
+            17.44,
+            3.256,
+            -11.79
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 161,
+          "name": "f2_break_floor03",
+          "anchor": [
+            19.838,
+            3.633,
+            25.044
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 163,
+          "name": "f2_break_floor05",
+          "anchor": [
+            22.508,
+            3.633,
+            2.844
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 162,
+          "name": "f2_break_floor04",
+          "anchor": [
+            19.838,
+            3.633,
+            14.754
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 93,
+          "name": "break_wall175X2",
+          "anchor": [
+            0.107,
+            5.269,
+            -10.127
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 15,
+          "name": "break_wall175X2",
+          "anchor": [
+            -11.245,
+            1.622,
+            12.622
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 9,
+          "name": "break_wall175X2",
+          "anchor": [
+            -3.779,
+            1.619,
+            12.624
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 73,
+          "name": "break_wall175X2",
+          "anchor": [
+            0.108,
+            1.619,
+            -10.123
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 141,
+          "name": "break_wall175X2",
+          "anchor": [
+            8.787,
+            5.269,
+            -4.814
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 135,
+          "name": "break_wall175X2",
+          "anchor": [
+            3.787,
+            5.269,
+            -4.814
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 107,
+          "name": "break_wall175X2",
+          "anchor": [
+            -11.555,
+            5.263,
+            -11.967
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 295,
+          "name": "break_lockfloor03",
+          "anchor": [
+            -14.575,
+            7.295,
+            -14.939
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 1,
+          "name": "break_wall250x3",
+          "anchor": [
+            -0.115,
+            1.619,
+            16.464
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 55,
+          "name": "break_wall250x3",
+          "anchor": [
+            1.947,
+            1.625,
+            -14.957
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 85,
+          "name": "break_wall250_175x2",
+          "anchor": [
+            1.947,
+            5.263,
+            -15.697
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 113,
+          "name": "break_wall250",
+          "anchor": [
+            1.225,
+            5.269,
+            12.63
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 117,
+          "name": "break_wall250",
+          "anchor": [
+            10.662,
+            5.269,
+            12.63
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 29,
+          "name": "break_wall175x4",
+          "anchor": [
+            -10.86,
+            1.619,
+            2.397
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 159,
+          "name": "f2_break_floor01",
+          "anchor": [
+            -11.12,
+            3.63,
+            13.87
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 165,
+          "name": "f1_break_roof02",
+          "anchor": [
+            -6.57,
+            3.256,
+            19.16
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 298,
+          "name": "break_lockfloor01 (6)",
+          "anchor": [
+            -1.848,
+            3.642,
+            -14.437
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 307,
+          "name": "break_lockfloor01 (6)",
+          "anchor": [
+            2.33,
+            3.642,
+            23.657
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 304,
+          "name": "break_lockfloor01 (6)",
+          "anchor": [
+            18.517,
+            3.642,
+            -17.391
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 310,
+          "name": "break_lockfloor01 (6)",
+          "anchor": [
+            5.497,
+            3.657,
+            -8.506
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 311,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            5.497,
+            3.257,
+            -8.507
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 302,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            20.294,
+            3.242,
+            11.094
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 296,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -14.575,
+            6.895,
+            -14.94
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 305,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            18.517,
+            3.242,
+            -17.392
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 308,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            2.33,
+            3.242,
+            23.656
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 299,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -1.848,
+            3.242,
+            -14.438
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 79,
+          "name": "break_wall250x2",
+          "anchor": [
+            -5.825,
+            1.619,
+            -10.124
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 153,
+          "name": "break_wall250x2",
+          "anchor": [
+            -0.115,
+            5.269,
+            15.22
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 121,
+          "name": "break_wall250x2",
+          "anchor": [
+            12.544,
+            5.269,
+            20.6
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 147,
+          "name": "break_wall250x2",
+          "anchor": [
+            -0.115,
+            5.269,
+            22.929
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 164,
+          "name": "f1_break_roof01",
+          "anchor": [
+            6.25,
+            3.256,
+            19.18
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 313,
+          "name": "break_lockfloor03 (2)",
+          "anchor": [
+            -10.455,
+            7.477,
+            15.641
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 301,
+          "name": "break_lockfloor03 (1)",
+          "anchor": [
+            20.294,
+            3.642,
+            11.095
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 167,
+          "name": "f1_break_roof04",
+          "anchor": [
+            7.149,
+            3.256,
+            -11.809
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 168,
+          "name": "f1_break_roof05",
+          "anchor": [
+            -4.772,
+            3.233,
+            -14.458
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 127,
+          "name": "break_wall175x3",
+          "anchor": [
+            -10.042,
+            5.269,
+            12.63
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 21,
+          "name": "break_wall175x3",
+          "anchor": [
+            -7.295,
+            1.619,
+            9.715
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 99,
+          "name": "break_wall175x3",
+          "anchor": [
+            -8.84,
+            5.263,
+            -10.127
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 39,
+          "name": "break_wall175x3",
+          "anchor": [
+            -11.578,
+            1.619,
+            -12.839
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 47,
+          "name": "break_wall175x3",
+          "anchor": [
+            13.648,
+            1.625,
+            -13.832
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 314,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -10.455,
+            7.077,
+            15.64
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 63,
+          "name": "break_wall250x2_175x2",
+          "anchor": [
+            6.287,
+            1.619,
+            -4.82
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 160,
+          "name": "f2_break_floor02",
+          "anchor": [
+            -11.09,
+            3.63,
+            1.08
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        }
+      ]
+    },
+    "3": {
+      "bundle": "1d61e87067dc84bf933fdefc25d37f27.unity3d",
+      "walls": [
+        {
+          "id": 357,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            3.619,
+            -2.201,
+            3.41
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 37,
+          "name": "break_wall175X2",
+          "anchor": [
+            22.372,
+            -0.175,
+            0.18
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 135,
+          "name": "break_wall175X2",
+          "anchor": [
+            -1.424,
+            -3.825,
+            6.582
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 25,
+          "name": "break_wall175X2",
+          "anchor": [
+            16.719,
+            -0.175,
+            -10.919
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 31,
+          "name": "break_wall175X2",
+          "anchor": [
+            16.719,
+            -0.175,
+            -5.109
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 43,
+          "name": "break_wall175X2",
+          "anchor": [
+            28.632,
+            -0.175,
+            0.18
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 153,
+          "name": "break_wall175X2",
+          "anchor": [
+            10.531,
+            -3.825,
+            2.459
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 141,
+          "name": "break_wall175X2",
+          "anchor": [
+            0.416,
+            -3.825,
+            -1.176
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 73,
+          "name": "break_wall175X2",
+          "anchor": [
+            -2.204,
+            -0.175,
+            10.605
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 147,
+          "name": "break_wall175X2",
+          "anchor": [
+            10.531,
+            -3.825,
+            6.845
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 1,
+          "name": "break_wall175X2",
+          "anchor": [
+            -0.957,
+            -0.175,
+            -10.412
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 172,
+          "name": "mesh_f1_break_roof01",
+          "anchor": [
+            12.122,
+            1.46,
+            17.312
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 13,
+          "name": "break_wall250_175",
+          "anchor": [
+            6.715,
+            -0.175,
+            -2.035
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 19,
+          "name": "break_wall250_175",
+          "anchor": [
+            14.504,
+            -0.175,
+            0.18
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 93,
+          "name": "break_wall250_175",
+          "anchor": [
+            1.03,
+            3.473,
+            -3.056
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 171,
+          "name": "mesh_f1_break_floor05",
+          "anchor": [
+            5.694,
+            1.84,
+            -6.249
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 111,
+          "name": "break_wall250x3",
+          "anchor": [
+            10.359,
+            3.473,
+            -4.003
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 174,
+          "name": "mesh_f1_break_roof03",
+          "anchor": [
+            1.68,
+            1.46,
+            3.136
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 168,
+          "name": "mesh_f1_break_floor02",
+          "anchor": [
+            15.447,
+            1.84,
+            3.188
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 89,
+          "name": "break_wall250",
+          "anchor": [
+            1.04,
+            3.473,
+            -11.258
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 131,
+          "name": "break_wall250",
+          "anchor": [
+            18.645,
+            3.473,
+            14.99
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 159,
+          "name": "break_wall250",
+          "anchor": [
+            21.472,
+            -3.825,
+            -0.919
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 163,
+          "name": "break_wall250",
+          "anchor": [
+            16.518,
+            -3.825,
+            -2.643
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 170,
+          "name": "mesh_f1_break_floor04",
+          "anchor": [
+            15.43,
+            1.84,
+            -6.245
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 173,
+          "name": "mesh_f1_break_roof02",
+          "anchor": [
+            13.063,
+            1.44,
+            3.136
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 169,
+          "name": "mesh_f1_break_floor03",
+          "anchor": [
+            4.064,
+            1.84,
+            3.188
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 329,
+          "name": "break_lockfloor01 (6)",
+          "anchor": [
+            19.426,
+            1.838,
+            5.089
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 332,
+          "name": "break_lockfloor01 (6)",
+          "anchor": [
+            12.895,
+            1.838,
+            -11.627
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 353,
+          "name": "break_lockfloor01 (6)",
+          "anchor": [
+            8.727,
+            1.838,
+            18.712
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 351,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -1.824,
+            -2.201,
+            17.956
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 327,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            12.148,
+            1.438,
+            10.479
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 333,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            12.895,
+            1.438,
+            -11.628
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 348,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -8.773,
+            -2.201,
+            1.252
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 354,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            8.727,
+            1.438,
+            18.711
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 336,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -2.595,
+            1.438,
+            13.48
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 345,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -8.917,
+            -2.201,
+            -3.917
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 330,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            19.426,
+            1.438,
+            5.088
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 342,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            23.285,
+            -2.201,
+            -8.176
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 339,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            18.134,
+            -2.201,
+            1.305
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 7,
+          "name": "break_wall250x2",
+          "anchor": [
+            -2.155,
+            -0.175,
+            0.18
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 61,
+          "name": "break_wall250x2",
+          "anchor": [
+            5.595,
+            -0.175,
+            13.996
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 99,
+          "name": "break_wall250x2",
+          "anchor": [
+            -2.175,
+            3.473,
+            3.206
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 125,
+          "name": "break_wall250x2",
+          "anchor": [
+            15.775,
+            3.473,
+            13.619
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 105,
+          "name": "break_wall250x2",
+          "anchor": [
+            4.366,
+            3.473,
+            6.196
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 49,
+          "name": "break_wall250x2",
+          "anchor": [
+            18.645,
+            -0.175,
+            8.786
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 55,
+          "name": "break_wall250x2",
+          "anchor": [
+            18.645,
+            -0.175,
+            18.054
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 119,
+          "name": "break_wall250x2",
+          "anchor": [
+            10.359,
+            3.473,
+            3.201
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 67,
+          "name": "break_wall250x2",
+          "anchor": [
+            3.006,
+            -0.175,
+            10.605
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 326,
+          "name": "break_lockfloor03",
+          "anchor": [
+            12.148,
+            1.838,
+            10.48
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 347,
+          "name": "break_lockfloor03 (5)",
+          "anchor": [
+            -8.773,
+            -1.801,
+            1.253
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 341,
+          "name": "break_lockfloor03 (3)",
+          "anchor": [
+            23.285,
+            -1.801,
+            -8.175
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 344,
+          "name": "break_lockfloor03 (4)",
+          "anchor": [
+            -8.917,
+            -1.801,
+            -3.916
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 335,
+          "name": "break_lockfloor03 (1)",
+          "anchor": [
+            -2.595,
+            1.838,
+            13.481
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 350,
+          "name": "break_lockfloor03 (6)",
+          "anchor": [
+            -1.824,
+            -1.801,
+            17.957
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 338,
+          "name": "break_lockfloor03 (2)",
+          "anchor": [
+            18.134,
+            -1.801,
+            1.306
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 356,
+          "name": "break_lockfloor03 (5)",
+          "anchor": [
+            3.619,
+            -1.801,
+            3.411
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 167,
+          "name": "mesh_f1_break_floor01",
+          "anchor": [
+            12.122,
+            1.84,
+            17.312
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 79,
+          "name": "break_wall250x2_175x2",
+          "anchor": [
+            16.176,
+            3.473,
+            0.18
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 176,
+          "name": "mesh_f1_break_roof05",
+          "anchor": [
+            3.866,
+            1.46,
+            -6.324
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 175,
+          "name": "mesh_f1_break_roof04",
+          "anchor": [
+            13.608,
+            1.46,
+            -6.247
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        }
+      ]
+    },
+    "4": {
+      "bundle": "a88f202458716efb88abd0a361b1f073.unity3d",
+      "walls": [
+        {
+          "id": 141,
+          "name": "break_wall175X2",
+          "anchor": [
+            16.627,
+            6.275,
+            -7.249
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 85,
+          "name": "break_wall175X2",
+          "anchor": [
+            -0.555,
+            1.625,
+            -16.38
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 171,
+          "name": "break_wall175X2",
+          "anchor": [
+            21.677,
+            6.275,
+            8.438
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 125,
+          "name": "break_wall175X2",
+          "anchor": [
+            21.677,
+            6.275,
+            15.141
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 91,
+          "name": "break_wall175X2",
+          "anchor": [
+            7.766,
+            1.625,
+            -9.347
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 41,
+          "name": "break_wall175X2",
+          "anchor": [
+            -1.431,
+            1.625,
+            14.587
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 35,
+          "name": "break_wall175X2",
+          "anchor": [
+            19.947,
+            1.625,
+            -16.833
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 101,
+          "name": "break_wall175X2",
+          "anchor": [
+            -4.972,
+            1.625,
+            -22.473
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 206,
+          "name": "mesh_f1_break_roof01",
+          "anchor": [
+            -7.043,
+            4.26,
+            7.126
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 151,
+          "name": "break_wall250_175",
+          "anchor": [
+            -3.646,
+            6.275,
+            11.871
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 57,
+          "name": "break_wall250_175x2",
+          "anchor": [
+            -0.735,
+            1.625,
+            -1.717
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 107,
+          "name": "break_wall250_175x2",
+          "anchor": [
+            6.111,
+            6.275,
+            -19.217
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 183,
+          "name": "break_wall250",
+          "anchor": [
+            23.233,
+            6.275,
+            6.2
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 181,
+          "name": "break_wall250",
+          "anchor": [
+            29.808,
+            6.275,
+            6.2
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 177,
+          "name": "break_wall250",
+          "anchor": [
+            9.439,
+            6.275,
+            -17.743
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 121,
+          "name": "break_wall250",
+          "anchor": [
+            14.901,
+            6.275,
+            6.2
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 167,
+          "name": "break_wall250",
+          "anchor": [
+            7.464,
+            6.275,
+            -4.928
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 97,
+          "name": "break_wall250",
+          "anchor": [
+            9.675,
+            1.625,
+            -17.682
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 81,
+          "name": "break_wall250",
+          "anchor": [
+            9.675,
+            1.625,
+            -10.803
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 137,
+          "name": "break_wall250",
+          "anchor": [
+            15.287,
+            6.275,
+            -9.347
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 147,
+          "name": "break_wall250",
+          "anchor": [
+            -6.211,
+            6.275,
+            3.092
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 163,
+          "name": "break_wall250",
+          "anchor": [
+            -11.373,
+            6.275,
+            3.092
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 185,
+          "name": "break_wall250",
+          "anchor": [
+            -1.431,
+            6.275,
+            1.556
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 47,
+          "name": "break_wall175x4",
+          "anchor": [
+            -9.009,
+            1.625,
+            12.545
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 65,
+          "name": "break_wall175x4",
+          "anchor": [
+            -7.33,
+            1.625,
+            -5.167
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 203,
+          "name": "mesh_f2_break_floor04",
+          "anchor": [
+            -7.39,
+            4.64,
+            4.836
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 202,
+          "name": "mesh_f2_break_floor01",
+          "anchor": [
+            -7.39,
+            4.64,
+            -0.91
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 207,
+          "name": "mesh_f1_break_roof02",
+          "anchor": [
+            11.535,
+            4.26,
+            -14.283
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 201,
+          "name": "mesh_f2_break_floor03",
+          "anchor": [
+            24.01,
+            4.64,
+            -1.643
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 217,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            6.673,
+            4.253,
+            -14.134
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 211,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            20.948,
+            4.253,
+            -1.424
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 223,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -2.55,
+            4.253,
+            10.65
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 214,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            23.485,
+            4.253,
+            4.346
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 220,
+          "name": "break_lockfloor02 (6)",
+          "anchor": [
+            -9.384,
+            4.253,
+            -2.247
+          ],
+          "yaw_deg": 180.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 10
+        },
+        {
+          "id": 157,
+          "name": "break_wall250x2",
+          "anchor": [
+            -1.431,
+            6.275,
+            16.574
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 75,
+          "name": "break_wall250x2",
+          "anchor": [
+            -7.941,
+            1.625,
+            -15.971
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 189,
+          "name": "break_wall250x2",
+          "anchor": [
+            5.97,
+            6.275,
+            0.409
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 115,
+          "name": "break_wall250x2",
+          "anchor": [
+            23.748,
+            6.275,
+            -9.477
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 195,
+          "name": "break_wall250x2",
+          "anchor": [
+            -4.279,
+            6.275,
+            -4.928
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 21,
+          "name": "break_wall250x2",
+          "anchor": [
+            16.582,
+            1.625,
+            3.182
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 131,
+          "name": "break_wall250x2",
+          "anchor": [
+            6.633,
+            6.275,
+            -9.347
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 1,
+          "name": "break_wall250x2",
+          "anchor": [
+            16.582,
+            1.625,
+            -6.383
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 15,
+          "name": "break_wall250x2",
+          "anchor": [
+            5.798,
+            1.625,
+            2.921
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 205,
+          "name": "mesh_f2_break_floor02",
+          "anchor": [
+            11.49,
+            4.64,
+            -14.283
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        },
+        {
+          "id": 216,
+          "name": "break_lockfloor03 (2)",
+          "anchor": [
+            6.673,
+            4.653,
+            -14.133
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 222,
+          "name": "break_lockfloor03 (4)",
+          "anchor": [
+            -2.55,
+            4.653,
+            10.651
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 219,
+          "name": "break_lockfloor03 (3)",
+          "anchor": [
+            -9.384,
+            4.653,
+            -2.246
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 213,
+          "name": "break_lockfloor03 (1)",
+          "anchor": [
+            23.485,
+            4.653,
+            4.347
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 210,
+          "name": "break_lockfloor03",
+          "anchor": [
+            20.948,
+            4.653,
+            -1.423
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": true,
+          "attack_config_id": 9
+        },
+        {
+          "id": 27,
+          "name": "break_wall175x3",
+          "anchor": [
+            26.44,
+            1.625,
+            -9.347
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 7,
+          "name": "break_wall175x3",
+          "anchor": [
+            12.708,
+            1.625,
+            -0.221
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": false,
+          "is_hatch": false,
+          "attack_config_id": 3
+        },
+        {
+          "id": 208,
+          "name": "mesh_f1_break_roof03",
+          "anchor": [
+            23.988,
+            4.26,
+            -1.573
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 2
+        },
+        {
+          "id": 204,
+          "name": "mesh_f2_break_floor05",
+          "anchor": [
+            -7.39,
+            4.64,
+            13.087
+          ],
+          "yaw_deg": 0.0,
+          "is_floor": true,
+          "is_hatch": false,
+          "attack_config_id": 16
+        }
+      ]
+    }
+  }
+}
